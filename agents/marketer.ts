@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db, getConfig, logAction } from "@/lib/db";
 import { SITE_URL } from "@/lib/site";
 import { FEATURED_MAX_BUY, usd, type Deal } from "@/lib/queries";
+import { shoot, solariEnabled } from "@/lib/sources/solari";
 
 // Marketer runs every minute (its own pg_cron job). Each run, every connected channel whose
 // spacing has passed gets one post. Spacing keeps accounts out of spam filters: a suspended
@@ -70,7 +71,30 @@ async function polish(text: string): Promise<string> {
   }
 }
 
-async function postBluesky(text: string, link: string, title: string) {
+// Solari renders the deal's share card (/card/<id>) to a PNG once; it's kept in storage and on the deal.
+async function dealCard(dealId: string): Promise<Buffer | null> {
+  const d = db();
+  if (!d || !solariEnabled()) return null;
+  const { data: deal } = await d.from("deals").select("screenshot_url").eq("id", dealId).maybeSingle();
+  if (deal?.screenshot_url) {
+    const r = await fetch(deal.screenshot_url);
+    if (r.ok) return Buffer.from(await r.arrayBuffer());
+  }
+  const shots = await shoot([`${SITE_URL}/card/${dealId}`], { width: 1080, height: 1080, selector: "#card" });
+  const shot = [...shots.values()][0];
+  if (!shot || shot instanceof Error) {
+    await logAction("marketer", "card_failed", { dealId, error: shot ? shot.message : "no shot" });
+    return null;
+  }
+  const path = `${dealId}.png`;
+  await d.storage.from("deal-cards").upload(path, shot.png, { contentType: "image/png", upsert: true });
+  const url = d.storage.from("deal-cards").getPublicUrl(path).data.publicUrl;
+  await d.from("deals").update({ screenshot_url: url }).eq("id", dealId);
+  await logAction("marketer", "solari_card", { dealId, url });
+  return shot.png;
+}
+
+async function postBluesky(text: string, link: string, title: string, image?: Buffer | null) {
   const s = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -84,16 +108,33 @@ async function postBluesky(text: string, link: string, title: string) {
       collection: "app.bsky.feed.post",
       record: {
         $type: "app.bsky.feed.post",
-        text,
+        text: image ? `${text}
+${link}` : text,
         createdAt: new Date().toISOString(),
-        embed: {
-          $type: "app.bsky.embed.external",
-          external: { uri: link, title, description: "Underpriced finds with the profit math done." },
-        },
+        ...(await blueskyEmbed(s.accessJwt, text, link, title, image)),
       },
     }),
   });
   if (!r.ok) throw new Error(`bluesky ${r.status}`);
+}
+
+// With an image: the card as a picture and the link made clickable in the text (a richtext facet).
+// Without: a link card.
+async function blueskyEmbed(jwt: string, text: string, link: string, title: string, image?: Buffer | null) {
+  if (!image) {
+    return { embed: { $type: "app.bsky.embed.external", external: { uri: link, title, description: "Underpriced finds with the profit math done." } } };
+  }
+  const up = await fetch("https://bsky.social/xrpc/com.atproto.repo.uploadBlob", {
+    method: "POST",
+    headers: { "content-type": "image/png", authorization: `Bearer ${jwt}` },
+    body: new Uint8Array(image),
+  }).then((r) => r.json() as Promise<{ blob: unknown }>);
+  const byteStart = Buffer.byteLength(`${text}
+`);
+  return {
+    facets: [{ index: { byteStart, byteEnd: byteStart + Buffer.byteLength(link) }, features: [{ $type: "app.bsky.richtext.facet#link", uri: link }] }],
+    embed: { $type: "app.bsky.embed.images", images: [{ alt: title, image: up.blob, aspectRatio: { width: 1080, height: 1080 } }] },
+  };
 }
 
 async function postMastodon(text: string, link: string) {
@@ -123,7 +164,7 @@ async function postDiscord(text: string, link: string) {
   if (!r.ok) throw new Error(`discord ${r.status}`);
 }
 
-const send: Record<string, (text: string, link: string, title: string) => Promise<void>> = {
+const send: Record<string, (text: string, link: string, title: string, image?: Buffer | null) => Promise<void>> = {
   bluesky: postBluesky, mastodon: postMastodon, telegram: postTelegram, discord: postDiscord,
 };
 
@@ -176,7 +217,8 @@ export async function run() {
     if (!post) continue;
     const link = `${SITE_URL}/go/${post.id}${piece.to ? `?to=${piece.to}` : ""}`;
     try {
-      await send[channel](text, link, piece.title);
+      const image = channel === "bluesky" && piece.dealId ? await dealCard(piece.dealId).catch(() => null) : null;
+      await send[channel](text, link, piece.title, image);
       await d.from("posts").update({ url: link }).eq("id", post.id);
       await logAction("marketer", "posted", { channel, text });
       posted++;
