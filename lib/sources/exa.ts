@@ -48,7 +48,9 @@ const LISTING_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string", description: "Item name as listed" },
-    price_usd: { type: "number", description: "Current asking price in US dollars; 0 if not shown" },
+    price_usd: { type: "number", description: "Current fixed asking price; 0 if not shown" },
+    currency: { type: "string", description: "ISO currency code of the price, e.g. USD, EUR, GBP" },
+    auction: { type: "boolean", description: "True if the price is a current bid in an auction rather than a fixed buy-now price" },
     shipping_usd: { type: "number", description: "Shipping cost in US dollars; 0 if free or not shown" },
     condition: { type: "string", description: "new, used, vintage, refurbished, or unknown" },
     for_sale: { type: "boolean", description: "True only if this page is a single item currently available to buy (not sold, not a category or article page)" },
@@ -56,19 +58,20 @@ const LISTING_SCHEMA = {
   required: ["title", "price_usd", "for_sale"],
 } as const;
 
-interface Extracted { title?: string; price_usd?: number; shipping_usd?: number; condition?: string; for_sale?: boolean }
+interface Extracted { title?: string; price_usd?: number; currency?: string; auction?: boolean; shipping_usd?: number; condition?: string; for_sale?: boolean }
 
 function toListing(r: { url: string; title?: string | null; summary?: string; image?: string }): WebListing | null {
   let x: Extracted;
   try { x = JSON.parse(r.summary ?? "{}"); } catch { return null; }
-  if (!x.for_sale || !x.price_usd || x.price_usd <= 0) return null;
+  if (!x.for_sale || !x.price_usd || x.price_usd <= 0 || x.auction) return null;
+  if (x.currency && x.currency.toUpperCase() !== "USD") return null;
   return {
     id: r.url, url: r.url, title: x.title || r.title || "", price: x.price_usd,
     shipping: x.shipping_usd ?? 0, condition: x.condition ?? "unknown", forSale: true, photo: r.image,
   };
 }
 
-export async function findListings(query: string, includeDomains: string[], numResults = 25): Promise<WebListing[]> {
+export async function findListings(query: string, includeDomains: string[], numResults = 40): Promise<WebListing[]> {
   const client = exa();
   if (!client) return [];
   const res = await client.search(`${query} for sale`, {

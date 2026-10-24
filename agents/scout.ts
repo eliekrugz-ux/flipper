@@ -152,7 +152,7 @@ export const WEB_DOMAINS: Record<string, string[]> = {
   cameras: ["keh.com", "mpb.com", "ebay.com"],
   electronics: ["swappa.com", "backmarket.com", "ebay.com"],
   collectibles: ["ebay.com"],
-  cars: ["bringatrailer.com", "carsandbids.com", "cars.com"],
+  cars: ["cars.com", "autotrader.com", "carfax.com"], // fixed-price only; auction sites price by current bid
   vinyl: ["ebay.com"],
 };
 const WEB_PER_TICK = 12;
