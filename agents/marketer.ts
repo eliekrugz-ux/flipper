@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, getConfig, logAction } from "@/lib/db";
 import { SITE_URL } from "@/lib/site";
-import { FEATURED_MAX_BUY, usd, type Deal } from "@/lib/queries";
+import { featuredMaxBuy, usd, type Deal } from "@/lib/queries";
 import { shoot, solariEnabled } from "@/lib/sources/solari";
 
 // Marketer runs every minute (its own pg_cron job). Each run, every connected channel whose
@@ -191,7 +191,7 @@ export async function run() {
   const [{ data: fresh }, { data: recent }] = await Promise.all([
     // Affordable, high-return finds sell the Seat better than five-figure gear.
     d.from("deals").select("*").neq("status", "expired").gte("created_at", new Date(Date.now() - 864e5).toISOString())
-      .lte("buy_price", FEATURED_MAX_BUY).order("roi", { ascending: false }).limit(200),
+      .lte("buy_price", await featuredMaxBuy()).order("roi", { ascending: false }).limit(200),
     d.from("posts").select("channel, deal_id, created_at").in("channel", live)
       .gte("created_at", new Date(Date.now() - 2 * 864e5).toISOString()).order("created_at", { ascending: false }),
   ]);

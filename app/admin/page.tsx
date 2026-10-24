@@ -10,6 +10,21 @@ const TERAC_BUDGET = 100;
 
 type Metric = Record<string, number> | null;
 
+// The hackathon's autonomy requirements, mapped to the agents that cover them (agent = agent_logs name).
+const AUTONOMY = [
+  { job: "Building the product", agents: ["scout", "pricer", "verifier"], does: "find, price and re-check deals", schedule: "every 30 min" },
+  { job: "Improving the product", agents: ["researcher"], does: "Terac answers → homepage winner, deal ranking", schedule: "every 30 min" },
+  { job: "Marketing & outbound", agents: ["marketer"], does: "Bluesky + Telegram posts, Solari cards, IndexNow", schedule: "every minute" },
+  { job: "Selling to customers", agents: ["sales", "support"], does: "Check verdicts, buyer questions", schedule: "on demand" },
+  { job: "Handling payments", agents: ["finance"], does: "signed Whop webhook → revenue, access", schedule: "on each payment" },
+  { job: "Legal / compliance", agents: ["compliance"], does: "checks legal pages against the product, rewrites drift", schedule: "every 6 h" },
+  { job: "Hard decisions", agents: ["ceo"], does: "moves pricing, quality and posting levers from live data", schedule: "every 2 h" },
+];
+
+function LastActed({ at }: { at: string }) {
+  return <span>{new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })} ET</span>;
+}
+
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="panel p-4">
@@ -100,6 +115,31 @@ async function Live() {
         <Stat label="Deals called" value={String(data.dealCount)} />
         <Stat label="Checks delivered" value={String(data.checkCount)} />
         <Stat label="Terac spend" value={`${usd(teracSpent)} / ${usd(TERAC_BUDGET)}`} sub={`${data.studies.length} studies`} />
+      </div>
+
+      <h2 className="display mt-14 border-t-[3px] border-ink pt-3 text-3xl">Who runs what</h2>
+      <p className="mt-1 text-sm text-ink-2">Every job the company has, the agent doing it, and when it last acted. No human in these loops.</p>
+      <div className="mt-4 border-t border-ink">
+        {AUTONOMY.map((row) => {
+          const stats = row.agents.map((a) => data.agents[a]).filter(Boolean);
+          const last = stats.map((s) => s!.lastAt).filter(Boolean).sort().pop() ?? null;
+          const actions = stats.reduce((n, s) => n + s!.actions24h, 0);
+          const decisions = stats.reduce((n, s) => n + s!.decisions, 0);
+          return (
+            <div key={row.job} className="grid grid-cols-12 gap-3 border-b border-hair py-3 text-sm">
+              <div className="col-span-12 font-semibold md:col-span-3">{row.job}</div>
+              <div className="col-span-12 md:col-span-5">
+                <span className="font-mono text-red">{row.agents.join(" · ")}</span>
+                <span className="text-ink-2"> · {row.does}</span>
+              </div>
+              <div className="col-span-6 font-mono text-xs text-ink-2 md:col-span-2">{row.schedule}</div>
+              <div className="col-span-6 text-right font-mono text-xs md:col-span-2">
+                {last ? <LastActed at={last} /> : <span className="text-ink-2">waiting</span>}
+                <div className="text-ink-2">{actions} actions/24h{decisions ? ` · ${decisions} decisions` : ""}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <h2 className="display mt-14 border-t-[3px] border-ink pt-3 text-3xl">Human-in-the-loop studies (Terac)</h2>

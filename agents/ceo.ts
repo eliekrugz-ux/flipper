@@ -5,6 +5,8 @@ import { run as pricer } from "./pricer";
 import { run as verifier } from "./verifier";
 import { pingIndexNow } from "./marketer";
 import { run as researcher } from "./researcher";
+import { run as operator } from "./operator";
+import { run as compliance } from "./compliance";
 
 const MODEL = "claude-sonnet-5-5";
 
@@ -77,8 +79,14 @@ export async function tick() {
   // Posting runs every minute on its own schedule (/api/agents/market); the tick only pings search engines.
   if (deals.length) await pingIndexNow().catch((e) => logAction("marketer", "indexnow_failed", { error: String(e) }));
   await researcher().catch((e) => logAction("researcher", "failed", { error: String(e) }));
-  // Credit rationing: the Claude watchlist review runs once every 6 hours, not every tick.
-  if (new Date().getUTCHours() % 6 === 0 && new Date().getUTCMinutes() < 30) await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
+  // Claude reviews are rationed: operating review every 2 hours; watchlist and compliance every 6.
+  const hour = new Date().getUTCHours();
+  const firstTickOfHour = new Date().getUTCMinutes() < 30;
+  if (firstTickOfHour && hour % 2 === 0) await operator().catch((e) => logAction("ceo", "operating_review_failed", { error: String(e) }));
+  if (firstTickOfHour && hour % 6 === 0) {
+    await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
+    await compliance().catch((e) => logAction("compliance", "failed", { error: String(e) }));
+  }
   const summary = { candidates: candidates.length, deals: deals.length, ...verified };
   await logAction("ceo", "tick_done", summary);
   return summary;

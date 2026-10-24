@@ -57,7 +57,13 @@ export async function homeVariant(): Promise<"A" | "B"> {
 }
 
 // Deals most people can actually buy lead the public pages: best return under the price cap.
+// The CEO's operating review moves the cap (config "featured_max_buy"); this is the fallback.
 export const FEATURED_MAX_BUY = 800;
+
+export async function featuredMaxBuy(): Promise<number> {
+  const { data } = (await db()?.from("config").select("value").eq("key", "featured_max_buy").maybeSingle()) ?? {};
+  return Number(data?.value) || FEATURED_MAX_BUY;
+}
 
 export async function topDeals(limit = 6): Promise<Deal[]> {
   "use cache";
@@ -66,7 +72,7 @@ export async function topDeals(limit = 6): Promise<Deal[]> {
     ?.from("deals")
     .select("*")
     .neq("status", "expired")
-    .lte("buy_price", FEATURED_MAX_BUY)
+    .lte("buy_price", await featuredMaxBuy())
     .order("roi", { ascending: false })
     .limit(60)) ?? {};
   return ((data as Deal[]) ?? []).sort((a, b) => featuredScore(b) - featuredScore(a)).slice(0, limit).map(forPublic);
@@ -94,15 +100,28 @@ export async function liveDeals(limit = 150): Promise<Deal[]> {
 export async function dashboardData() {
   const d = db();
   if (!d) return null;
-  const [revenue, logs, decisions, studies, deals, checks] = await Promise.all([
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const [revenue, logs, decisions, studies, deals, checks, activity, decided] = await Promise.all([
     d.from("revenue_events").select("amount, product, product_kind, created_at").order("created_at", { ascending: false }),
     d.from("agent_logs").select("agent, action, payload_json, created_at").order("created_at", { ascending: false }).limit(40),
     d.from("decisions").select("agent, decision, reasoning, created_at").order("created_at", { ascending: false }).limit(20),
     d.from("terac_studies").select("*").order("created_at", { ascending: true }),
     d.from("deals").select("id", { count: "exact", head: true }),
     d.from("checks").select("id", { count: "exact", head: true }),
+    d.from("agent_logs").select("agent, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+    d.from("decisions").select("agent, created_at").order("created_at", { ascending: false }).limit(500),
   ]);
+  // Per agent: actions in the last 24h, when it last acted, and decisions it has logged.
+  const agents: Record<string, { actions24h: number; lastAt: string | null; decisions: number }> = {};
+  const slot = (a: string) => (agents[a] ??= { actions24h: 0, lastAt: null, decisions: 0 });
+  for (const l of activity.data ?? []) {
+    const s = slot(l.agent);
+    s.actions24h++;
+    s.lastAt ??= l.created_at;
+  }
+  for (const x of decided.data ?? []) slot(x.agent).decisions++;
   return {
+    agents,
     revenue: revenue.data ?? [],
     logs: logs.data ?? [],
     decisions: decisions.data ?? [],
