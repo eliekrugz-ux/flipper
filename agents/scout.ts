@@ -1,6 +1,7 @@
 import { logAction } from "@/lib/db";
-import { findProducts, getListing, listingIdFromUrl, productForListing, productListings, type ReverbListing, type ReverbProduct } from "@/lib/sources/reverb";
+import { discoverProducts, findProducts, getListing, listingIdFromUrl, productForListing, productListings, type ReverbListing, type ReverbProduct } from "@/lib/sources/reverb";
 import { search } from "@/lib/sources/exa";
+import { pool } from "@/lib/pool";
 
 export interface Candidate {
   source: "reverb";
@@ -38,10 +39,20 @@ export const DEFAULT_WATCHLIST = [
 // The cheapest few listings per product are the only ones that can be underpriced.
 const PER_PRODUCT = 3;
 
+// Listings filed under a product page that aren't the working product itself.
+const NOT_THE_ITEM = /\b(case|gig ?bag|bag|cover|manual|box only|empty box|knob|knobs|footswitch|power supply|adapter|cable|parts?|repair|broken|not working|as[- ]is|faulty|for spares|decal|sticker|strap|stand|template|pcb|kit|replica|clone)\b/i;
+// Far below the product's median is almost always a different item, an accessory or a scam — never a real steal.
+const MIN_PRICE_VS_MEDIAN = 0.4;
+
 async function scanProduct(product: ReverbProduct): Promise<Candidate[]> {
-  const listings = await productListings(product);
+  const all = await productListings(product);
+  const listings = all.filter((l) => !NOT_THE_ITEM.test(l.title));
   if (listings.length < 4) return [];
-  const sorted = [...listings].sort((a, b) => a.price + a.shipping - (b.price + b.shipping));
+  const prices = listings.map((l) => l.price).sort((a, b) => a - b);
+  const median = prices[Math.floor(prices.length / 2)];
+  const sorted = listings
+    .filter((l) => l.price >= median * MIN_PRICE_VS_MEDIAN)
+    .sort((a, b) => a.price + a.shipping - (b.price + b.shipping));
   return sorted.slice(0, PER_PRODUCT).map((listing) => ({
     source: "reverb" as const,
     listing,
@@ -66,20 +77,37 @@ async function exaDiscover(): Promise<ReverbProduct[]> {
   return products;
 }
 
-export async function run(watchlist: string[] = DEFAULT_WATCHLIST, useExa = true): Promise<Candidate[]> {
-  await logAction("scout", "start", { watchlist, useExa });
-  const lookups = await Promise.allSettled(watchlist.map((q) => findProducts(q, 1)));
-  const products: ReverbProduct[] = lookups.flatMap((r) => (r.status === "fulfilled" ? r.value.slice(0, 1) : []));
+// Broad sweeps: each returns every product page in that category with enough used listings for comps.
+export const DEFAULT_CATEGORIES = [
+  "overdrive pedal", "distortion pedal", "fuzz pedal", "delay pedal", "reverb pedal", "looper pedal",
+  "chorus pedal", "compressor pedal", "multi-effects", "synthesizer", "drum machine", "sampler",
+  "midi controller", "audio interface", "condenser microphone", "dynamic microphone", "studio monitor",
+  "guitar amp", "bass amp", "electric guitar", "bass guitar", "acoustic guitar", "turntable", "dj controller",
+];
+
+export async function run(
+  watchlist: string[] = DEFAULT_WATCHLIST,
+  useExa = true,
+  categories: string[] = DEFAULT_CATEGORIES,
+): Promise<Candidate[]> {
+  await logAction("scout", "start", { watchlist: watchlist.length, categories: categories.length, useExa });
+  const products = new Map<number, ReverbProduct>();
+  const add = (ps: ReverbProduct[]) => ps.forEach((p) => products.set(p.id, p));
+
+  const lookups = await pool(watchlist, 10, (q) => findProducts(q, 1));
+  lookups.forEach((r) => r.status === "fulfilled" && add(r.value.slice(0, 1)));
+  const sweeps = await pool(categories, 6, (q) => discoverProducts(q));
+  sweeps.forEach((r) => r.status === "fulfilled" && add(r.value));
   if (useExa) {
     const found = await exaDiscover().catch(() => []);
     await logAction("scout", "exa_discovery", { products: found.map((p) => p.title) });
-    for (const p of found) if (!products.some((x) => x.id === p.id)) products.push(p);
+    add(found);
   }
 
-  const scans = await Promise.allSettled(products.map(scanProduct));
+  const scans = await pool([...products.values()], 10, scanProduct);
   const candidates = scans.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   const failed = scans.filter((r) => r.status === "rejected").length;
   if (failed) await logAction("scout", "scan_failed", { failed });
-  await logAction("scout", "done", { products: products.length, candidates: candidates.length });
+  await logAction("scout", "done", { products: products.size, candidates: candidates.length });
   return candidates;
 }

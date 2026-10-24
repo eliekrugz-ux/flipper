@@ -86,6 +86,27 @@ export async function findProducts(query: string, perPage = 5): Promise<ReverbPr
   }));
 }
 
+// Category sweep: every product page matching a broad query with enough used listings to price against.
+export async function discoverProducts(query: string, minUsed = 8, pages = 2): Promise<ReverbProduct[]> {
+  const out: ReverbProduct[] = [];
+  for (let page = 1; page <= pages; page++) {
+    const d = await get<{ comparison_shopping_pages: Array<{
+      id: number; slug: string; title: string; used_total: number;
+      used_low_price?: { amount: string }; _links: { listings: { href: string } };
+    }>; total_pages?: number }>(`${BASE}/csps?query=${encodeURIComponent(query)}&per_page=50&page=${page}`);
+    for (const c of d.comparison_shopping_pages) {
+      if (c.used_total < minUsed) continue;
+      out.push({
+        id: c.id, slug: c.slug, title: c.title, usedTotal: c.used_total,
+        usedLowPrice: c.used_low_price ? Number(c.used_low_price.amount) : undefined,
+        listingsHref: c._links.listings.href,
+      });
+    }
+    if (!d.total_pages || page >= d.total_pages) break;
+  }
+  return out;
+}
+
 // All live used listings for one exact product.
 export async function productListings(p: ReverbProduct, perPage = 50): Promise<ReverbListing[]> {
   const sep = p.listingsHref.includes("?") ? "&" : "?";
