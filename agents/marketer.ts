@@ -14,11 +14,14 @@ const channels = {
   discord: !!process.env.DISCORD_WEBHOOK_URL,
 };
 
+// "Roland Juno-106 61-Key Programmable Polyphonic Synthesizer 1984 - 1985 - Black" -> "Roland Juno-106 61-Key Programmable Polyphonic"
+const shortTitle = (t: string) => t.split(" - ")[0].split(/s+/).slice(0, 6).join(" ");
+
 function template(d: Deal) {
   const ask = d.deal_type === "offer" && d.offer_price
     ? `offer ${usd(d.offer_price)} (listed ${usd(d.buy_price)})`
     : `listed at ${usd(d.buy_price)}`;
-  return `Found: ${d.title.slice(0, 90)}, ${ask}. The same item goes for about ${usd(d.market_value)}. Est. net +${usd(d.net_profit)} after fees and shipping.`;
+  return `Found: ${shortTitle(d.title)}, ${ask}. The same item goes for about ${usd(d.market_value)}. Est. net +${usd(d.net_profit)} after fees and shipping.`;
 }
 
 // Claude tightens the copy; the numbers always come from the deal row, never the model.
@@ -31,12 +34,12 @@ async function write(d: Deal): Promise<string> {
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `Rewrite this resale-deal post for flippers on social media. Keep every dollar amount exactly as given, under 220 characters, no hashtags, no emojis, no hype words. Plain, specific, credible. Output only the post.\n\n${base}`,
+        content: `Rewrite this resale-deal post for flippers on social media. Keep every dollar amount exactly as given, under 260 characters, no hashtags, no emojis, no hype words. Plain, specific, credible. Output only the post.\n\n${base}`,
       }],
     });
     const text = msg.content.find((b) => b.type === "text")?.text.trim() ?? "";
     const amounts = base.match(/\$[\d,.]+/g) ?? [];
-    return text && text.length <= 240 && amounts.every((n) => text.includes(n)) ? text : base;
+    return text && text.length <= 280 && amounts.every((n) => text.includes(n)) ? text : base;
   } catch {
     return base;
   }
@@ -102,7 +105,13 @@ export async function run() {
     d.from("posts").select("deal_id").gte("created_at", new Date(Date.now() - 7 * 864e5).toISOString()),
   ]);
   const already = new Set((done ?? []).map((p) => p.deal_id));
-  const picks = ((fresh as Deal[]) ?? []).filter((x) => !already.has(x.id)).slice(0, PER_TICK);
+  // One post per item, and non-music finds first so the feed shows the full range.
+  const seen = new Set<string>();
+  const picks = ((fresh as (Deal & { item_key: string })[]) ?? [])
+    .filter((x) => !already.has(x.id))
+    .sort((a, b) => Number(a.source === "reverb") - Number(b.source === "reverb"))
+    .filter((x) => !seen.has(x.item_key) && !!seen.add(x.item_key))
+    .slice(0, PER_TICK);
   if (!picks.length) {
     await logAction("marketer", "idle", { reason: "no new verified deals" });
     return { posted: 0, sent: 0 };
