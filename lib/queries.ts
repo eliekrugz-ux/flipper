@@ -48,6 +48,14 @@ export async function recentDeals(limit = 20): Promise<Deal[]> {
   return ((data as Deal[]) ?? []).map(forPublic);
 }
 
+// Which homepage is live; the Researcher sets it from Terac Study 1.
+export async function homeVariant(): Promise<"A" | "B"> {
+  "use cache";
+  cacheLife("minutes");
+  const { data } = (await db()?.from("config").select("value").eq("key", "home_variant").maybeSingle()) ?? {};
+  return data?.value === "B" ? "B" : "A";
+}
+
 export async function topDeals(limit = 6): Promise<Deal[]> {
   "use cache";
   cacheLife("minutes");

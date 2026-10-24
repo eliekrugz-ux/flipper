@@ -155,7 +155,7 @@ export const WEB_DOMAINS: Record<string, string[]> = {
   cars: ["cars.com", "autotrader.com", "carfax.com"], // fixed-price only; auction sites price by current bid
   vinyl: ["ebay.com"],
 };
-const WEB_PER_TICK = 12;
+const WEB_PER_TICK = 6;
 
 async function scanWebQuery(query: string, category: string): Promise<Candidate[]> {
   const words = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/s+/).filter((w) => w.length > 1);
@@ -198,7 +198,7 @@ export async function run(
   lookups.forEach((r) => r.status === "fulfilled" && add(r.value.slice(0, 1)));
   const sweeps = await pool(categories, 6, (q) => discoverProducts(q));
   sweeps.forEach((r) => r.status === "fulfilled" && add(r.value));
-  if (useExa) {
+  if (useExa && process.env.EXA_DISCOVERY === "1") {
     const found = await exaDiscover().catch(() => []);
     await logAction("scout", "exa_discovery", { products: found.map((p) => p.title) });
     add(found);

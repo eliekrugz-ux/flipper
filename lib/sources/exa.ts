@@ -71,7 +71,7 @@ function toListing(r: { url: string; title?: string | null; summary?: string; im
   };
 }
 
-export async function findListings(query: string, includeDomains: string[], numResults = 40): Promise<WebListing[]> {
+export async function findListings(query: string, includeDomains: string[], numResults = 25): Promise<WebListing[]> {
   const client = exa();
   if (!client) return [];
   const res = await client.search(`${query} for sale`, {

@@ -4,6 +4,7 @@ import { DEFAULT_WATCHLIST, run as scout } from "./scout";
 import { run as pricer } from "./pricer";
 import { run as verifier } from "./verifier";
 import { run as marketer } from "./marketer";
+import { run as researcher } from "./researcher";
 
 const MODEL = "claude-sonnet-5-5";
 
@@ -77,7 +78,9 @@ export async function tick() {
     void logAction("marketer", "failed", { error: String(e) });
     return { posted: 0, sent: 0 };
   });
-  await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
+  await researcher().catch((e) => logAction("researcher", "failed", { error: String(e) }));
+  // Credit rationing: the Claude watchlist review runs once every 6 hours, not every tick.
+  if (new Date().getUTCHours() % 6 === 0 && new Date().getUTCMinutes() < 30) await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
   const summary = { candidates: candidates.length, deals: deals.length, ...verified, ...marketing };
   await logAction("ceo", "tick_done", summary);
   return summary;

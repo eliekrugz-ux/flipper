@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { DealCard } from "./components/DealCard";
 import { Section } from "./components/Chrome";
-import { topDeals, usd } from "@/lib/queries";
+import { HeroB } from "./components/HeroB";
+import { homeVariant, topDeals, usd } from "@/lib/queries";
 
 const SEAT_URL = process.env.NEXT_PUBLIC_WHOP_SEAT_URL || "#";
 const CHECK_URL = process.env.NEXT_PUBLIC_WHOP_CHECK_URL || "#";
@@ -14,14 +15,14 @@ const steps = [
 ];
 
 export default async function Home() {
-  const deals = await topDeals(4);
+  const [deals, variant] = await Promise.all([topDeals(4), homeVariant()]);
   return (
     <main>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="floor" />
         <div className="wrap relative grid12 gap-y-8 pb-16 pt-10 sm:pt-16">
-          <div className="col-span-12 md:col-span-8">
+          {variant === "B" ? <HeroB deals={deals} seatUrl={SEAT_URL} /> : <div className="col-span-12 md:col-span-8">
             <div className="label">Resale deals · furniture · clothing · sneakers · watches · cameras · cars · gear</div>
             <h1 className="display mt-4 text-[13vw] sm:text-7xl lg:text-[104px]">
               Underpriced finds<span className="text-red">.</span>
@@ -36,7 +37,7 @@ export default async function Home() {
               <a href={SEAT_URL} className="pill">Get a Founding Seat · $49</a>
               <Link href="/check" className="pill-ghost">Check a listing · $7</Link>
             </div>
-          </div>
+          </div>}
           <div className="col-span-12 md:col-span-4 flex items-center justify-center">
             <div className="orb w-48 sm:w-64 md:w-full md:max-w-[300px]" />
           </div>
