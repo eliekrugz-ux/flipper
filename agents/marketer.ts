@@ -35,18 +35,18 @@ function dealPost(d: Row): Piece {
   };
 }
 
-// Every few posts, sell instead of show: a recap of what was found, or the $7 Check.
+// Every few posts, sell instead of show: the Founding Seat, backed by what was found.
 function pitchPost(n: number, deals: Row[]): Piece {
   const total = deals.reduce((s, d) => s + Number(d.net_profit), 0);
   if (n % 2 === 0 && deals.length) {
     return {
-      text: `Last 24h: ${deals.length} underpriced listings found, ${usd(total)} in est. net profit after fees and shipping. Members get every link 24 hours before the public.`,
-      title: "Today's underpriced finds", dealId: null, to: "",
+      text: `Last 24h: ${deals.length} underpriced listings found, ${usd(total)} in est. net profit after fees and shipping. Founding Seat members get every link 24 hours before the public. 50 seats, $49.`,
+      title: "Founding Seat: deals 24h first", dealId: null, to: "",
     };
   }
   return {
-    text: "Before you buy that used listing: paste the link into Flipper Check and get BUY, PASS or OFFER $X with comps, fees and net profit. $7.",
-    title: "Flipper Check: BUY, PASS or OFFER", dealId: null, to: "check",
+    text: "Flipper Founding Seat: every verified underpriced listing, with comps and net profit, 24 hours before anyone else. Capped at 50 so members aren't racing each other. $49 one-time.",
+    title: "Founding Seat: 50 max, $49", dealId: null, to: "",
   };
 }
 
