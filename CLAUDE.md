@@ -5,6 +5,44 @@ Save a copy as `CLAUDE.md` in the repo root so it persists across sessions.
 
 ---
 
+## ⚠️ WE ARE HERE TO WIN. Re-read this section before every phase.
+
+**Submissions lock 6:45 PM ET. Feature freeze 5:00 PM.** Every task you pick up must move at least one track below. If it doesn't, skip it.
+
+### Win conditions, track by track (what the judges must SEE)
+
+| Track | Prize | Judges must see on the dashboard / in the video | Done? |
+|---|---|---|---|
+| **Best Overall** | $1000 | A polished live demo of multiple agents working together end to end. Clean UI, impressive tech, clear story. | [ ] |
+| **Best Agent-Run Company** | $1000 | **Real Whop revenue earned today** (live counter from Whop webhooks) + a credible post-hackathon business (seat cap, pricing, growth plan in README). | [ ] |
+| **2nd Best Agent-Run Company** | $500 | Same as above. More revenue = higher rank. | [ ] |
+| **Best Use of Terac** | $500 | Agent decides it needs humans → gets Terac quote → launches General Population study → reads results → **changes the product**. Before/after numbers and charts for every study. | [ ] |
+| **Best Use of Exa** | $1000 credits | Exa is the backbone of discovery: finding listings, sold-price research, finding communities to market to. Show Exa calls in the activity feed and name Exa in the video. | [ ] |
+| **Best Use of Solari** | $600 credits | Solari headless browser verifies listings live with screenshots on each deal card (and posts marketing if time allows). Show the screenshots and name Solari in the video. | [ ] |
+| **$2K revenue bonus** | +$1000 | Push every agent toward sales: live checkout early, proof deals posted publicly, marketing running all day. | [ ] |
+
+### The hackathon's own requirements (judged on all tracks)
+The company must autonomously handle: **building the product, marketing & outbound, selling to customers, handling payments, legal/compliance, making hard decisions.** Each one needs a named agent and visible evidence on `/dashboard`:
+- [ ] Product: Scout + Pricer + Flipper Check working live
+- [ ] Marketing & outbound: Marketer posts + outbound log
+- [ ] Selling: Sales agent + Whop checkout + community deal posts
+- [ ] Payments: Whop webhook → revenue counter
+- [ ] Legal/compliance: Terms, Refunds, Disclaimer pages written by Compliance agent
+- [ ] Hard decisions: CEO decision log with reasoning (Terac spend approvals, price changes, killed categories)
+
+### Submission checklist (nothing else matters if these are missing)
+- [ ] Whop Business ID
+- [ ] Public GitHub repo with README (architecture, agents, Terac before/after with numbers, sponsor usage)
+- [ ] Live deployment URL
+- [ ] 2 min demo video that names **Terac, Exa, Solari, Whop** on screen
+
+### At every status update, tell Elie:
+1. Which tracks are now demo-ready (update the table above)
+2. Current Whop revenue and Terac spend vs $100
+3. The single next task that moves the most prize money
+
+---
+
 ## 0. Context (why this exists)
 
 I'm Elie, competing TODAY (Sat Oct 24, 2026) in the **Terac Zero Human Hackathon** in NYC.
