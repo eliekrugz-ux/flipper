@@ -27,8 +27,10 @@ Each agent is a module in [`agents/`](agents) with a `run()` function. Every act
 | **Verifier** ([verifier.ts](agents/verifier.ts)) | Re-reads every live deal; expires it if sold, removed or repriced above the buy price | every 30 min | Reverb API, **Exa** live crawl |
 | **Marketer** ([marketer.ts](agents/marketer.ts)) | Posts real deals, 24-hour recaps and Check pitches to every connected channel, with spacing per channel; every link is tracked; pings search engines through IndexNow | **every minute** | Claude for copy, Bluesky, Telegram, Mastodon and Discord adapters, RSS |
 | **Researcher** ([researcher.ts](agents/researcher.ts)) | Runs **Terac** studies, scores the answers, and ships the winning product change with a before/after | every 30 min | **Terac** MCP, its own task pages |
+| **CEO operating review** ([operator.ts](agents/operator.ts)) | Reads live metrics (deals, expiries, clicks per channel, revenue, Terac) and moves the company's levers itself: quality bar, featured price cap, posting pace. Every lever has hard bounds. Claude decides when available; fixed rules otherwise. | every 2 h | Claude |
 | **Sales / payments** ([webhook](app/api/whop/webhook/route.ts), [check](app/api/check/route.ts)) | Verifies Whop's webhook signature, records revenue, delivers Check verdicts, gates the members feed | on each payment | **Whop** |
-| **Compliance** ([legal](app/legal/[doc]/page.tsx)) | Terms, refund policy, disclaimer (not financial advice, no guaranteed profit). Sources only official APIs and Exa; never scrapes Facebook Marketplace, Vinted, Mercari, Poshmark, Depop or Grailed. | always | |
+| **Support** ([support.ts](agents/support.ts)) | Answers buyer questions on [`/support`](app/support) from product facts and the live policies; routes refunds and billing to Whop; FAQ fallback without Claude | on demand | Claude |
+| **Compliance** ([compliance.ts](agents/compliance.ts)) | Checks the legal pages against what the product does today and rewrites drift; refuses any rewrite that drops "not financial advice", "no guaranteed profit", "own risk" or the 7-day refunds. Never scrapes Facebook Marketplace, Vinted, Mercari, Poshmark, Depop or Grailed. | every 6 h | Claude |
 
 ## Fully autonomous: who does what
 
@@ -36,17 +38,21 @@ Each agent is a module in [`agents/`](agents) with a `run()` function. Every act
 |---|---|---|
 | Building the product | Scout, Pricer and Verifier rebuild the deal feed every 30 min; the Researcher changes the homepage from Terac results | `agent_logs`, `/deals`, homepage variant |
 | Marketing & outbound | The Marketer posts every few minutes across channels, tracks clicks, pings search engines | `posts` table with clicks, [Bluesky](https://bsky.app), [Telegram](https://t.me/tryflipperdeals) |
-| Selling to customers | Whop checkout, the members window, the $7 Check | `/check`, `/members` |
+| Selling to customers | Whop checkout, the members window, the $7 Check, the Support agent | `/check`, `/members`, `/support` |
 | Handling payments | Signed Whop webhook → `revenue_events` → access granted | `/admin` revenue counter |
-| Legal / compliance | Terms, refunds and disclaimer pages; banned sources never touched | `/legal/*` |
-| Hard decisions | The CEO logs every spend and threshold call with reasoning | `decisions` on `/admin` |
+| Legal / compliance | The Compliance agent keeps terms, refunds and disclaimer in line with the product; banned sources never touched | `/legal/*` |
+| Hard decisions | The CEO operating review moves bounded levers from live data every 2 hours; every call is logged with reasoning | `decisions` on `/admin` |
+
+`/admin` opens with a live **Who runs what** map: each requirement, its agents, when they last acted, and how many decisions they've logged.
+
+**Where humans were involved, plainly:** the build itself, the launch-time spend calls (Terac studies, the $12 Reddit ad), posting outside our own channels (Reddit), and adding API keys. Those launch-time calls are in the decision log too.
 
 Scheduling runs inside Supabase with no human in the loop: `pg_cron` calls `/api/agents/tick` every 30 minutes and `/api/agents/market` every minute. The bearer token for those calls is generated and kept in Supabase Vault.
 
 ## Human in the loop: Terac
 
 1. **The CEO decides it needs people.** It asks whether the offer page is clear and trusted, or whether a proof-first page would sell better.
-2. **Quote before spend.** Terac estimated $6 per participant, so 20 people would cost $120: over both the $35 study cap and the $100 balance. The CEO cut it to 5 people for $30 and logged why.
+2. **Quote before spend.** Terac estimated $6 per participant, so 20 people would cost $120: over both the $35 study cap and the $100 balance. The CEO cut it to 5 people for $30 and logged why. After 2 hours with no completions (every applicant goes through Terac's screener and AI voice interview), it launched a second wave of the same study (6 people, $27) and a deal-appeal study (7 people, $42): **$99 of $100, three studies.**
 3. **The study is live**, open to the US general population (adults who've bought or sold second-hand online). Participants compare two homepages on [`/study/offer`](app/study/offer), rate clarity, trust and willingness to pay, pick one and explain why. Answers land in `study_responses`, and the page returns them to Terac to mark the submission complete.
 4. **The product changes by itself.** Once 3 answers are in, the Researcher scores both versions, writes the before/after to `terac_studies`, and switches the live homepage if version B wins.
 
@@ -57,7 +63,14 @@ Scheduling runs inside Supabase with no human in the loop: `pg_cron` calls `/api
 | Would pay | _pending_ | _pending_ |
 | Preferred | _pending_ | _pending_ |
 
-_Terac spend: $30 of $100. Remaining credit is reserved for a deal-appeal study and a re-test of the winner._
+**Study 3, deal appeal** ([`/study/deals`](app/study/deals)): people rate 8 live deals on "would you buy this to resell?" and "how trustworthy does it look?". The Researcher writes those ratings onto each deal, and the homepage and posts rank by return × human rating. Before = the featured top 4 by return alone; after = the top 4 by return × rating; measured as the top 4's average would-buy score.
+
+| Metric | Before: ranked by return | After: return × human rating |
+|---|---|---|
+| Top-4 would-buy (1–5) | _pending_ | _pending_ |
+| Top-4 rated 4+ | _pending_ | _pending_ |
+
+_Terac spend: $99 of $100 across three studies._
 
 ## Exa
 
