@@ -68,8 +68,16 @@ export async function topDeals(limit = 6): Promise<Deal[]> {
     .neq("status", "expired")
     .lte("buy_price", FEATURED_MAX_BUY)
     .order("roi", { ascending: false })
-    .limit(limit)) ?? {};
-  return ((data as Deal[]) ?? []).map(forPublic);
+    .limit(60)) ?? {};
+  return ((data as Deal[]) ?? []).sort((a, b) => featuredScore(b) - featuredScore(a)).slice(0, limit).map(forPublic);
+}
+
+// Return weighted by how much real people (Terac Study 3) said they'd buy and trust the deal.
+// Unrated deals count as a neutral 3/5, so ROI alone decides until ratings exist.
+export function featuredScore(d: Pick<Deal, "roi"> & { human_appeal?: number | null; human_trust?: number | null }) {
+  const appeal = d.human_appeal ?? 3;
+  const trust = d.human_trust ?? 3;
+  return Number(d.roi) * ((Number(appeal) + Number(trust)) / 10);
 }
 
 // Members feed: everything, links included. Call only after checking membership.
