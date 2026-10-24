@@ -1,5 +1,6 @@
 import { usd, type Deal } from "@/lib/queries";
 
+// One Swiss table row per deal: photo, item, the numbers in fixed columns.
 export function DealCard({ deal }: { deal: Deal }) {
   const pay = deal.deal_type === "offer" && deal.offer_price ? deal.offer_price : deal.buy_price;
   return (
@@ -7,31 +8,37 @@ export function DealCard({ deal }: { deal: Deal }) {
       href={deal.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-neutral-900 dark:border-neutral-800 dark:hover:border-neutral-100"
+      className="group grid12 items-center gap-y-3 border-b border-hair py-5 transition-colors hover:bg-paper-2"
     >
-      {deal.photo_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={deal.photo_url} alt="" className="h-20 w-20 flex-none rounded-lg object-cover" />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-semibold">{deal.title}</div>
-        <div className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          {deal.deal_type === "offer" ? (
-            <>Listed {usd(deal.buy_price)} · <b>offer {usd(pay)}</b></>
-          ) : (
-            <>Buy at <b>{usd(pay)}</b></>
-          )}{" "}
-          · worth ~{usd(deal.market_value)} · {deal.condition}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2 font-mono text-xs">
-          <span className="rounded bg-emerald-100 px-2 py-0.5 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200">
-            net +{usd(deal.net_profit)}
-          </span>
-          <span className="rounded bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">ROI {Math.round(deal.roi * 100)}%</span>
-          <span className="rounded bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">confidence {deal.confidence}</span>
-          <span className="rounded bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">{deal.comps_count} comps · {deal.source}</span>
+      <div className="col-span-3 sm:col-span-2">
+        {deal.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={deal.photo_url} alt="" className="aspect-square w-full rounded-xl border border-hair object-cover" />
+        ) : (
+          <div className="orb w-full" />
+        )}
+      </div>
+      <div className="col-span-9 sm:col-span-5 min-w-0">
+        <div className="label">{deal.source} · {deal.condition} · {deal.comps_count} comps</div>
+        <div className="mt-1 text-lg font-bold leading-tight tracking-tight group-hover:text-red">{deal.title}</div>
+        <div className="mt-1 text-sm text-ink-2">
+          {deal.deal_type === "offer" ? <>Listed {usd(deal.buy_price)} → offer <b className="text-ink">{usd(pay)}</b></> : <>Buy at <b className="text-ink">{usd(pay)}</b></>}
         </div>
       </div>
+      <dl className="col-span-12 sm:col-span-5 grid grid-cols-3 gap-2 text-right tnum">
+        <div>
+          <dt className="label">Worth</dt>
+          <dd className="text-lg font-semibold">{usd(deal.market_value)}</dd>
+        </div>
+        <div>
+          <dt className="label">Net</dt>
+          <dd className="text-lg font-extrabold text-profit">+{usd(deal.net_profit)}</dd>
+        </div>
+        <div>
+          <dt className="label">ROI · Conf.</dt>
+          <dd className="text-lg font-semibold">{Math.round(deal.roi * 100)}% · {deal.confidence}</dd>
+        </div>
+      </dl>
     </a>
   );
 }

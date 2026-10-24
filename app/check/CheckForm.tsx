@@ -29,47 +29,54 @@ export function CheckForm() {
   }
 
   return (
-    <div className="mt-8">
-      <form onSubmit={submit} className="grid gap-3">
-        <input
-          required type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://reverb.com/item/…"
-          className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 dark:border-neutral-700"
-        />
-        <input
-          required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email you used on Whop"
-          className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 dark:border-neutral-700"
-        />
-        <button
-          disabled={busy}
-          className="rounded-lg bg-neutral-900 px-4 py-2 font-semibold text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-        >
+    <div>
+      <form onSubmit={submit} className="panel grid gap-4 p-6 sm:p-8">
+        <label className="grid gap-1.5">
+          <span className="label">Listing link</span>
+          <input
+            required type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://reverb.com/item/…" className="field"
+          />
+        </label>
+        <label className="grid gap-1.5">
+          <span className="label">Email used on Whop</span>
+          <input
+            required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com" className="field"
+          />
+        </label>
+        <button disabled={busy} className="pill mt-2 w-full">
           {busy ? "Pricing it…" : "Run Flipper Check"}
         </button>
       </form>
 
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{error}</p>}
+      {error && <p className="mt-4 border-l-4 border-red bg-paper-2 p-3 text-sm">{error}</p>}
 
       {result && (
-        <section className="mt-8 rounded-xl border-2 border-neutral-900 p-6 dark:border-neutral-100">
-          <div className="font-mono text-sm uppercase text-neutral-500">Verdict</div>
-          <div className="mt-1 text-4xl font-bold">
+        <section className="mt-8 border-t-[3px] border-ink pt-4">
+          <div className="label">Verdict</div>
+          <div className={`display mt-2 text-6xl ${result.verdict === "PASS" ? "text-red" : "chrome-text"}`}>
             {result.verdict === "OFFER" ? `OFFER ${money(result.offerPrice!)}` : result.verdict}
           </div>
-          <div className="mt-1 truncate text-sm text-neutral-600 dark:text-neutral-400">{result.title}</div>
-          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <dt>Asking price</dt><dd className="text-right">{money(result.askPrice)}</dd>
-            <dt>Shipping</dt><dd className="text-right">{money(result.shipping)}</dd>
-            <dt>Market value</dt><dd className="text-right">{money(result.marketValue)}</dd>
-            <dt>Platform fees</dt><dd className="text-right">−{money(result.fees)}</dd>
-            <dt className="font-semibold">Net profit at asking</dt>
-            <dd className="text-right font-semibold">{money(result.netProfit)}</dd>
-            <dt>ROI</dt><dd className="text-right">{Math.round(result.roi * 100)}%</dd>
-            <dt>Confidence</dt><dd className="text-right">{result.confidence}/100 · {result.compsCount} comps</dd>
+          <div className="mt-2 truncate text-sm text-ink-2">{result.title}</div>
+          <dl className="mt-6 grid grid-cols-2 text-sm tnum">
+            {[
+              ["Asking price", money(result.askPrice)],
+              ["Shipping", money(result.shipping)],
+              ["Market value", money(result.marketValue)],
+              ["Platform fees", `−${money(result.fees)}`],
+              ["Net profit at asking", money(result.netProfit)],
+              ["ROI", `${Math.round(result.roi * 100)}%`],
+              ["Confidence", `${result.confidence}/100 · ${result.compsCount} comps`],
+            ].map(([k, v]) => (
+              <div key={k} className="col-span-2 grid grid-cols-2 border-b border-hair py-2">
+                <dt className={k.startsWith("Net") ? "font-bold" : ""}>{k}</dt>
+                <dd className={`text-right ${k.startsWith("Net") ? "font-extrabold" : ""}`}>{v}</dd>
+              </div>
+            ))}
           </dl>
-          <ul className="mt-6 list-disc space-y-1 pl-5 text-xs text-neutral-500">
-            {result.notes.map((n) => <li key={n}>{n}</li>)}
+          <ul className="mt-4 space-y-1 text-xs text-ink-2">
+            {result.notes.map((n) => <li key={n}>— {n}</li>)}
           </ul>
         </section>
       )}

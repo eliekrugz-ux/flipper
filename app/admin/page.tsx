@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { isAdmin } from "@/lib/admin";
@@ -13,10 +12,10 @@ type Metric = Record<string, number> | null;
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <div className="font-mono text-xs uppercase text-neutral-500">{label}</div>
-      <div className="mt-1 text-3xl font-bold">{value}</div>
-      {sub && <div className="mt-1 text-xs text-neutral-500">{sub}</div>}
+    <div className="panel p-4">
+      <div className="label">{label}</div>
+      <div className="mt-1 display text-4xl tnum">{value}</div>
+      {sub && <div className="mt-1 text-xs text-ink-2">{sub}</div>}
     </div>
   );
 }
@@ -30,14 +29,14 @@ function BeforeAfter({ before, after }: { before: Metric; after: Metric }) {
     <div className="mt-3 grid gap-2">
       {keys.map((k) => (
         <div key={k} className="text-xs">
-          <div className="mb-1 text-neutral-500">{k}</div>
+          <div className="mb-1 text-ink-2">{k}</div>
           {[["before", before[k]], ["after", after?.[k]]].map(([label, v]) => (
             <div key={label as string} className="flex items-center gap-2">
-              <span className="w-12 text-neutral-500">{label}</span>
-              <div className="h-3 flex-1 rounded bg-neutral-100 dark:bg-neutral-800">
+              <span className="w-12 text-ink-2">{label}</span>
+              <div className="h-3 flex-1 rounded bg-paper-2">
                 {v != null && (
                   <div
-                    className={`h-3 rounded ${label === "after" ? "bg-emerald-500" : "bg-neutral-400"}`}
+                    className={`h-3 rounded ${label === "after" ? "bg-profit" : "bg-ink-2"}`}
                     style={{ width: `${(Number(v) / max) * 100}%` }}
                   />
                 )}
@@ -53,8 +52,8 @@ function BeforeAfter({ before, after }: { before: Metric; after: Metric }) {
 
 export default function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-      <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <main className="wrap pt-10">
+      <Suspense fallback={<p className="text-sm text-ink-2">Loading…</p>}>
         <Gate searchParams={searchParams} />
       </Suspense>
     </main>
@@ -67,13 +66,13 @@ async function Gate({ searchParams }: { searchParams: Promise<{ error?: string }
     const { error } = await searchParams;
     return (
       <form action={login} className="mx-auto mt-16 grid max-w-xs gap-3">
-        <h1 className="text-xl font-bold">Admin</h1>
+        <h1 className="display text-4xl">Admin<span className="text-red">.</span></h1>
         <input
           name="password" type="password" required autoFocus placeholder="Password"
-          className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 dark:border-neutral-700"
+          className="field"
         />
         {error && <p className="text-sm text-red-600">Wrong password.</p>}
-        <button className="rounded-lg bg-neutral-900 px-4 py-2 font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+        <button className="pill">
           Sign in
         </button>
       </form>
@@ -91,11 +90,11 @@ async function Live() {
   return (
     <>
       <div className="flex items-center justify-between gap-4">
-        <Link href="/" className="font-mono text-sm text-neutral-500">← Flipper</Link>
-        <form action={logout}><button className="font-mono text-sm text-neutral-500 underline">Sign out</button></form>
+        <span className="label">Admin · live</span>
+        <form action={logout}><button className="font-mono text-sm text-ink-2 underline">Sign out</button></form>
       </div>
-      <h1 className="mt-4 text-3xl font-bold">Agents</h1>
-      <p className="mt-1 text-neutral-500">Admin only. Everything below is written by the agents, live.</p>
+      <h1 className="display mt-4 text-6xl">Agents<span className="text-red">.</span></h1>
+      <p className="mt-1 text-ink-2">Admin only. Everything below is written by the agents, live.</p>
       <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Revenue (Whop)" value={usd(revenue)} sub={`${data.revenue.length} payments`} />
         <Stat label="Deals called" value={String(data.dealCount)} />
@@ -103,41 +102,41 @@ async function Live() {
         <Stat label="Terac spend" value={`${usd(teracSpent)} / ${usd(TERAC_BUDGET)}`} sub={`${data.studies.length} studies`} />
       </div>
 
-      <h2 className="mt-12 text-xl font-bold">Human-in-the-loop studies (Terac)</h2>
+      <h2 className="display mt-14 border-t-[3px] border-ink pt-3 text-3xl">Human-in-the-loop studies (Terac)</h2>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {data.studies.map((s) => (
-          <div key={s.id} className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+          <div key={s.id} className="panel p-4">
             <div className="flex items-baseline justify-between gap-2">
               <div className="font-semibold">{s.name}</div>
-              <div className="font-mono text-xs text-neutral-500">{s.status} · {usd(Number(s.cost ?? s.quote ?? 0))}</div>
+              <div className="font-mono text-xs text-ink-2">{s.status} · {usd(Number(s.cost ?? s.quote ?? 0))}</div>
             </div>
-            {s.summary && <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">{s.summary}</p>}
+            {s.summary && <p className="mt-2 text-sm text-ink-2">{s.summary}</p>}
             {s.change_made && <p className="mt-2 text-sm"><b>Change made:</b> {s.change_made}</p>}
             <BeforeAfter before={s.before_metric} after={s.after_metric} />
           </div>
         ))}
-        {!data.studies.length && <p className="text-sm text-neutral-500">No studies yet.</p>}
+        {!data.studies.length && <p className="text-sm text-ink-2">No studies yet.</p>}
       </div>
 
       <div className="mt-12 grid gap-8 md:grid-cols-2">
         <section>
-          <h2 className="text-xl font-bold">CEO decision log</h2>
+          <h2 className="display border-t-[3px] border-ink pt-3 text-3xl">CEO decision log</h2>
           <ul className="mt-4 space-y-3">
             {data.decisions.map((d, i) => (
-              <li key={i} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800">
-                <div className="font-mono text-xs text-neutral-500">{d.agent} · {new Date(d.created_at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}</div>
+              <li key={i} className="border-b border-hair py-3 text-sm">
+                <div className="font-mono text-xs text-ink-2">{d.agent} · {new Date(d.created_at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}</div>
                 <div className="mt-1 font-semibold">{d.decision}</div>
-                {d.reasoning && <div className="mt-1 text-neutral-600 dark:text-neutral-400">{d.reasoning}</div>}
+                {d.reasoning && <div className="mt-1 text-ink-2">{d.reasoning}</div>}
               </li>
             ))}
           </ul>
         </section>
         <section>
-          <h2 className="text-xl font-bold">Agent activity</h2>
-          <ul className="mt-4 divide-y divide-neutral-200 font-mono text-xs dark:divide-neutral-800">
+          <h2 className="display border-t-[3px] border-ink pt-3 text-3xl">Agent activity</h2>
+          <ul className="mt-4 divide-y divide-hair font-mono text-xs">
             {data.logs.map((l, i) => (
               <li key={i} className="flex gap-3 py-2">
-                <span className="w-16 flex-none text-neutral-500">
+                <span className="w-16 flex-none text-ink-2">
                   {new Date(l.created_at).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit" })}
                 </span>
                 <span className="w-20 flex-none font-semibold">{l.agent}</span>

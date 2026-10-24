@@ -1,26 +1,164 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Flipper — Swiss grid structure, Y2K chrome surface. */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --paper: #efefea;
+  --paper-2: #e4e4de;
+  --ink: #0b0b0c;
+  --ink-2: #55565a;
+  --rule: #0b0b0c;
+  --hair: #c9c9c2;
+  --red: #e10600;
+  --profit: #0a7f45;
+  --aqua-1: #c9f3ff;
+  --aqua-2: #56c8f2;
+  --aqua-3: #0a78c2;
+  --chrome: linear-gradient(180deg, #ffffff 0%, #c9ccd2 38%, #6e737c 50%, #d9dce1 62%, #9097a1 100%);
+  --metal: repeating-linear-gradient(90deg, rgba(0,0,0,.018) 0 1px, transparent 1px 2px),
+           linear-gradient(180deg, #fbfbfa 0%, #e9eae7 55%, #dcddda 100%);
+  --panel-edge: #a9abab;
+  --grid-line: rgba(11, 11, 12, 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #0b0c0e;
+    --paper-2: #15171a;
+    --ink: #f1f1ee;
+    --ink-2: #9a9da3;
+    --rule: #f1f1ee;
+    --hair: #2a2d31;
+    --red: #ff3b30;
+    --profit: #3ddc84;
+    --aqua-1: #bff0ff;
+    --aqua-2: #39b8ea;
+    --aqua-3: #0663a3;
+    --chrome: linear-gradient(180deg, #ffffff 0%, #d7dae0 36%, #5d636c 50%, #c4c8cf 64%, #eef0f3 100%);
+    --metal: repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 2px),
+             linear-gradient(180deg, #25282c 0%, #1a1c1f 55%, #131517 100%);
+    --panel-edge: #3a3e44;
+    --grid-line: rgba(241, 241, 238, 0.06);
   }
 }
 
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-hair: var(--hair);
+  --color-red: var(--red);
+  --color-profit: var(--profit);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html { background: var(--paper); }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--red); color: #fff; }
+
+/* ---------- Swiss structure ---------- */
+.wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 640px) { .wrap { padding: 0 32px; } }
+.grid12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 20px; }
+.rule { border-top: 3px solid var(--rule); }
+.hair { border-top: 1px solid var(--hair); }
+.label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2);
+}
+.sec-num { font-weight: 700; color: var(--red); font-variant-numeric: tabular-nums; }
+.display { font-weight: 800; letter-spacing: -0.045em; line-height: .92; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* faint 12-col guide behind the page, Swiss poster style */
+.guides {
+  background-image: linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: calc((100% - 0px) / 12) 100%;
+}
+
+/* ---------- Y2K surface ---------- */
+.chrome-text {
+  background: var(--chrome);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 1px rgba(0,0,0,.18);
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,.12));
+}
+@media (prefers-color-scheme: dark) { .chrome-text { -webkit-text-stroke: 1px rgba(255,255,255,.12); } }
+
+.pill {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .8rem 1.5rem; border-radius: 999px; font-weight: 700; letter-spacing: -.01em;
+  color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.25);
+  background: linear-gradient(180deg, var(--aqua-1) 0%, var(--aqua-2) 48%, var(--aqua-3) 52%, var(--aqua-2) 100%);
+  border: 1px solid var(--aqua-3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -2px 6px rgba(0,0,0,.18), 0 6px 18px -6px rgba(10,120,194,.55);
+  transition: transform .15s ease, filter .15s ease;
+}
+.pill::after { /* glossy highlight */
+  content: ""; position: absolute; left: 10%; right: 10%; top: 2px; height: 42%;
+  border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.pill:hover { filter: brightness(1.06) saturate(1.1); transform: translateY(-1px); }
+.pill:active { transform: translateY(1px); }
+.pill:disabled { opacity: .5; transform: none; }
+
+.pill-ghost {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .8rem 1.5rem; border-radius: 999px;
+  font-weight: 700; border: 1.5px solid var(--ink); color: var(--ink); transition: background .15s, color .15s;
+}
+.pill-ghost:hover { background: var(--ink); color: var(--paper); }
+
+.panel {
+  background: var(--metal);
+  border: 1px solid var(--panel-edge);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 1px 0 rgba(0,0,0,.04), 0 14px 30px -18px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme: dark) {
+  .panel { box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 14px 30px -18px rgba(0,0,0,.8); }
+}
+
+.orb {
+  aspect-ratio: 1; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.95) 0 6%, rgba(255,255,255,0) 22%),
+    radial-gradient(circle at 70% 78%, rgba(225,6,0,.35), rgba(225,6,0,0) 45%),
+    radial-gradient(circle at 50% 50%, var(--aqua-1) 0%, var(--aqua-2) 45%, var(--aqua-3) 80%, #052f50 100%);
+  box-shadow: inset -18px -24px 40px rgba(0,0,0,.35), inset 10px 14px 30px rgba(255,255,255,.35), 0 30px 60px -25px rgba(10,120,194,.6);
+  animation: float 7s ease-in-out infinite;
+}
+@keyframes float { 50% { transform: translateY(-10px) rotate(4deg); } }
+
+.floor {
+  position: absolute; inset: auto 0 0 0; height: 46%;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(520px) rotateX(62deg); transform-origin: bottom;
+  mask-image: linear-gradient(to top, #000 10%, transparent 95%);
+  pointer-events: none;
+}
+
+.ticker { overflow: hidden; white-space: nowrap; }
+.ticker > div { display: inline-block; padding-left: 100%; animation: ticker 38s linear infinite; }
+@keyframes ticker { to { transform: translateX(-100%); } }
+
+.field {
+  width: 100%; padding: .85rem 1rem; border-radius: 10px; background: var(--paper);
+  border: 1.5px solid var(--ink); color: var(--ink); font-size: 15px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.08);
+}
+.field:focus { outline: 3px solid var(--aqua-2); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .orb, .ticker > div { animation: none; }
 }

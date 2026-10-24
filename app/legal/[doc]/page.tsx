@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 // Plain language on purpose.
@@ -42,13 +41,19 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
   const doc = DOCS[(await params).doc];
   if (!doc) notFound();
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6">
-      <Link href="/" className="font-mono text-sm text-neutral-500">← Flipper</Link>
-      <h1 className="mt-4 text-3xl font-bold">{doc.title}</h1>
-      <div className="mt-6 space-y-4 text-neutral-700 dark:text-neutral-300">
-        {doc.body.map((p) => <p key={p}>{p}</p>)}
+    <main className="wrap grid12 gap-y-6 pt-12">
+      <div className="col-span-12 md:col-span-4">
+        <div className="label">Legal · updated Oct 24, 2026</div>
+        <h1 className="display mt-3 text-5xl">{doc.title}</h1>
       </div>
-      <p className="mt-10 text-xs text-neutral-500">Last updated October 24, 2026.</p>
+      <ol className="col-span-12 md:col-span-7 md:col-start-6 border-t-[3px] border-ink">
+        {doc.body.map((p, i) => (
+          <li key={p} className="grid grid-cols-[2.5rem_1fr] border-b border-hair py-4 text-ink-2">
+            <span className="font-mono text-sm text-red">{String(i + 1).padStart(2, "0")}</span>
+            <span className="text-ink">{p}</span>
+          </li>
+        ))}
+      </ol>
     </main>
   );
 }
