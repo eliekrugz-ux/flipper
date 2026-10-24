@@ -14,14 +14,17 @@ export function memberToken(email: string): string {
   return `${Buffer.from(email).toString("base64url")}.${sign(email)}`;
 }
 
+// A seat comes from a Whop purchase, or from the comp list (config "comp_seats"), which grants
+// access without a payment so it never counts as revenue.
 export async function hasSeat(email: string): Promise<boolean> {
-  const { data } = (await db()
-    ?.from("revenue_events")
-    .select("id")
-    .eq("customer_email", email.trim().toLowerCase())
-    .eq("product_kind", "seat")
-    .limit(1)) ?? {};
-  return !!data?.length;
+  const e = email.trim().toLowerCase();
+  const d = db();
+  const [{ data: paid }, { data: comp }] = await Promise.all([
+    d!.from("revenue_events").select("id").eq("customer_email", e).eq("product_kind", "seat").limit(1),
+    d!.from("config").select("value").eq("key", "comp_seats").maybeSingle(),
+  ]);
+  const comps = ((comp?.value as string[]) ?? []).map((x) => x.toLowerCase());
+  return !!paid?.length || comps.includes(e);
 }
 
 export async function currentMember(): Promise<string | null> {
