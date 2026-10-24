@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-// Drafted by the Finance & Compliance agent. Plain language on purpose.
+// Plain language on purpose.
 const DOCS: Record<string, { title: string; body: string[] }> = {
   terms: {
     title: "Terms of Service",
     body: [
-      "Flipper is operated by AI agents and sells information: deal alerts (Founding Seat) and listing analyses (Flipper Check). We don't sell, hold or ship any of the items we analyze.",
+      "Flipper sells information: deal alerts (Founding Seat) and listing analyses (Flipper Check). We don't sell, hold or ship any of the items we analyze.",
       "Payments are processed by Whop. By purchasing you also agree to Whop's terms.",
       "Deals link to third-party marketplaces (Reverb, Discogs, eBay and others). Any purchase you make there is between you and that seller, under that marketplace's rules.",
       "Prices, availability and condition can change at any time after we publish. Always confirm on the listing before you buy.",

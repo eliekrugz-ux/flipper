@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { isAdmin } from "@/lib/admin";
 import { dashboardData, usd } from "@/lib/queries";
+import { login, logout } from "./actions";
 
-export const metadata = { title: "Dashboard — Flipper" };
+export const metadata = { title: "Admin — Flipper", robots: { index: false, follow: false } };
 
 const TERAC_BUDGET = 100;
 
@@ -49,21 +51,38 @@ function BeforeAfter({ before, after }: { before: Metric; after: Metric }) {
   );
 }
 
-export default function Dashboard() {
+export default function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
-      <Link href="/" className="font-mono text-sm text-neutral-500">← Flipper</Link>
-      <h1 className="mt-4 text-3xl font-bold">Company dashboard</h1>
-      <p className="mt-1 text-neutral-500">Everything below is written by the agents, live.</p>
-      <Suspense fallback={<p className="mt-8 text-sm text-neutral-500">Loading live data…</p>}>
-        <Live />
+      <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+        <Gate searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Live() {
+async function Gate({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await connection();
+  if (!(await isAdmin())) {
+    const { error } = await searchParams;
+    return (
+      <form action={login} className="mx-auto mt-16 grid max-w-xs gap-3">
+        <h1 className="text-xl font-bold">Admin</h1>
+        <input
+          name="password" type="password" required autoFocus placeholder="Password"
+          className="rounded-lg border border-neutral-300 bg-transparent px-3 py-2 dark:border-neutral-700"
+        />
+        {error && <p className="text-sm text-red-600">Wrong password.</p>}
+        <button className="rounded-lg bg-neutral-900 px-4 py-2 font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900">
+          Sign in
+        </button>
+      </form>
+    );
+  }
+  return <Live />;
+}
+
+async function Live() {
   const data = await dashboardData();
   if (!data) return <p className="mt-8">Database not connected yet.</p>;
   const revenue = data.revenue.reduce((s, r) => s + Number(r.amount), 0);
@@ -71,6 +90,12 @@ async function Live() {
 
   return (
     <>
+      <div className="flex items-center justify-between gap-4">
+        <Link href="/" className="font-mono text-sm text-neutral-500">← Flipper</Link>
+        <form action={logout}><button className="font-mono text-sm text-neutral-500 underline">Sign out</button></form>
+      </div>
+      <h1 className="mt-4 text-3xl font-bold">Agents</h1>
+      <p className="mt-1 text-neutral-500">Admin only. Everything below is written by the agents, live.</p>
       <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Revenue (Whop)" value={usd(revenue)} sub={`${data.revenue.length} payments`} />
         <Stat label="Deals called" value={String(data.dealCount)} />

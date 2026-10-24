@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flipper — resale deals found by AI agents",
-  description: "Flipper is a resale deal company run entirely by AI agents. Verified underpriced listings with sold comps and full profit math.",
+  title: "Flipper — underpriced gear with the profit math done",
+  description: "Verified underpriced music gear, vinyl and electronics listings, with comps, fees and net profit worked out for you.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

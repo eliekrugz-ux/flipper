@@ -45,7 +45,7 @@ export function CheckForm() {
           disabled={busy}
           className="rounded-lg bg-neutral-900 px-4 py-2 font-semibold text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
         >
-          {busy ? "Agents are pricing it…" : "Run Flipper Check"}
+          {busy ? "Pricing it…" : "Run Flipper Check"}
         </button>
       </form>
 
