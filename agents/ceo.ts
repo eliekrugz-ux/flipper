@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db, getConfig, logAction, logDecision, setConfig } from "@/lib/db";
 import { DEFAULT_WATCHLIST, run as scout } from "./scout";
 import { run as pricer } from "./pricer";
+import { run as verifier } from "./verifier";
 
 const MODEL = "claude-sonnet-5-5";
 
@@ -67,7 +68,11 @@ export async function tick() {
     const c = candidates.find((x) => x.listing.url === d.url);
     if (c) yieldByProduct[c.product.title] += 1;
   }
+  const verified = await verifier().catch((e) => {
+    void logAction("verifier", "failed", { error: String(e) });
+    return { checked: 0, expired: 0, verified: 0 };
+  });
   await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
-  await logAction("ceo", "tick_done", { candidates: candidates.length, deals: deals.length });
-  return { candidates: candidates.length, deals: deals.length };
+  await logAction("ceo", "tick_done", { candidates: candidates.length, deals: deals.length, ...verified });
+  return { candidates: candidates.length, deals: deals.length, ...verified };
 }
