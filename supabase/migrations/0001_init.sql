@@ -10,6 +10,9 @@ create table if not exists deals (
   item_key text,
   condition text,
   buy_price numeric not null,
+  deal_type text not null default 'buy' check (deal_type in ('buy','offer')),
+  offer_price numeric,             -- for offer deals: max price that still clears thresholds
+  photo_url text,
   market_value numeric,
   comp_source text,                -- sold | price_guide | active_proxy
   comps_count int default 0,
@@ -74,8 +77,13 @@ create table if not exists agent_logs (
 create table if not exists revenue_events (
   id uuid primary key default gen_random_uuid(),
   whop_event_id text unique,
+  payment_id text,
   product text,
+  product_kind text,               -- seat | check | other
+  customer_email text,
   amount numeric not null,
+  checks_used int not null default 0, -- Flipper Check credits redeemed against this payment
+  raw jsonb,
   created_at timestamptz not null default now()
 );
 

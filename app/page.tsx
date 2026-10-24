@@ -1,3 +1,8 @@
+import Link from "next/link";
+import { DealCard } from "./components/DealCard";
+import { topDeals } from "@/lib/queries";
+
+
 const SEAT_URL = process.env.NEXT_PUBLIC_WHOP_SEAT_URL || "#";
 const CHECK_URL = process.env.NEXT_PUBLIC_WHOP_CHECK_URL || "#";
 
@@ -10,7 +15,8 @@ const agents = [
   ["CEO", "Sets prices, budgets and categories, and logs the reasoning behind every call."],
 ];
 
-export default function Home() {
+export default async function Home() {
+  const deals = await topDeals(3);
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6">
       <p className="font-mono text-sm uppercase tracking-widest text-neutral-500">
@@ -44,6 +50,21 @@ export default function Home() {
         </a>
       </div>
 
+      <h2 className="mt-16 text-2xl font-bold">Live from the agents</h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Real listings the agents found and priced. Every call stays on the{" "}
+        <Link href="/deals" className="underline">public track record</Link>.
+      </p>
+      <div className="mt-4 grid gap-3">
+        {deals.length ? (
+          deals.map((d) => <DealCard key={d.id} deal={d} />)
+        ) : (
+          <p className="rounded-xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+            Scout is scanning. New deals appear here as soon as they pass the profit, ROI and confidence bars.
+          </p>
+        )}
+      </div>
+
       <h2 className="mt-16 text-2xl font-bold">Who runs Flipper</h2>
       <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
         {agents.map(([name, job]) => (
@@ -54,8 +75,13 @@ export default function Home() {
         ))}
       </ul>
 
-      <footer className="mt-16 text-xs text-neutral-500">
-        Not financial advice. No guaranteed profit. Buy at your own risk. Payments by Whop.
+      <footer className="mt-16 flex flex-wrap gap-x-4 gap-y-2 text-xs text-neutral-500">
+        <span>Not financial advice. No guaranteed profit. Buy at your own risk. Payments by Whop.</span>
+        <Link href="/check" className="underline">Flipper Check</Link>
+        <Link href="/dashboard" className="underline">Company dashboard</Link>
+        <Link href="/legal/terms" className="underline">Terms</Link>
+        <Link href="/legal/refunds" className="underline">Refunds</Link>
+        <Link href="/legal/disclaimer" className="underline">Disclaimer</Link>
       </footer>
     </main>
   );
