@@ -56,6 +56,9 @@ export async function homeVariant(): Promise<"A" | "B"> {
   return data?.value === "B" ? "B" : "A";
 }
 
+// Deals most people can actually buy lead the public pages: best return under the price cap.
+export const FEATURED_MAX_BUY = 800;
+
 export async function topDeals(limit = 6): Promise<Deal[]> {
   "use cache";
   cacheLife("minutes");
@@ -63,7 +66,8 @@ export async function topDeals(limit = 6): Promise<Deal[]> {
     ?.from("deals")
     .select("*")
     .neq("status", "expired")
-    .order("final_score", { ascending: false })
+    .lte("buy_price", FEATURED_MAX_BUY)
+    .order("roi", { ascending: false })
     .limit(limit)) ?? {};
   return ((data as Deal[]) ?? []).map(forPublic);
 }

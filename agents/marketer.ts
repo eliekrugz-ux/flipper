@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, getConfig, logAction } from "@/lib/db";
 import { SITE_URL } from "@/lib/site";
-import { usd, type Deal } from "@/lib/queries";
+import { FEATURED_MAX_BUY, usd, type Deal } from "@/lib/queries";
 
 // Marketer runs every minute (its own pg_cron job). Each run, every connected channel whose
 // spacing has passed gets one post. Spacing keeps accounts out of spam filters: a suspended
@@ -148,8 +148,9 @@ export async function run() {
   if (!d || !live.length) return { posted: 0 };
   const cadence = { ...DEFAULT_CADENCE_MIN, ...(await getConfig<Record<string, number>>("marketing_cadence", {})) };
   const [{ data: fresh }, { data: recent }] = await Promise.all([
+    // Affordable, high-return finds sell the Seat better than five-figure gear.
     d.from("deals").select("*").neq("status", "expired").gte("created_at", new Date(Date.now() - 864e5).toISOString())
-      .order("final_score", { ascending: false }).limit(200),
+      .lte("buy_price", FEATURED_MAX_BUY).order("roi", { ascending: false }).limit(200),
     d.from("posts").select("channel, deal_id, created_at").in("channel", live)
       .gte("created_at", new Date(Date.now() - 2 * 864e5).toISOString()).order("created_at", { ascending: false }),
   ]);
