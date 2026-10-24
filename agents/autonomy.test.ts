@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clampChanges, ruleBasedPlan } from "./operator";
-import { safeToPublish } from "./compliance";
+import { ruleBasedReview, safeToPublish } from "./compliance";
 import { LEGAL_DEFAULTS } from "@/lib/legal";
 
 describe("CEO lever guardrails", () => {
@@ -30,5 +30,14 @@ describe("CEO rule-based fallback", () => {
   it("holds when everything is within targets", () => {
     const m = { deals_24h: 40, deals_under_800: 20, median_buy: 400, expired_24h: 2, channels: { telegram: { posts: 30, clicks: 30 } }, revenue_usd: 0, sales: 0, terac: [] };
     expect(ruleBasedPlan(levers, m).changes).toEqual({});
+  });
+});
+
+describe("compliance rule-based fallback", () => {
+  it("adds missing disclosures without dropping protections, then has nothing left to fix", () => {
+    const { docs, fixes } = ruleBasedReview(LEGAL_DEFAULTS);
+    expect(fixes.length).toBeGreaterThan(0);
+    expect(safeToPublish(docs)).toBeNull();
+    expect(ruleBasedReview(docs).fixes).toEqual([]);
   });
 });

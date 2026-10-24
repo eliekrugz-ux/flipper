@@ -30,9 +30,36 @@ export async function productFacts() {
   };
 }
 
+// Used when Claude is unavailable: fixed checks that the pages cover how the product works today.
+export function ruleBasedReview(docs: LegalDocs): { docs: LegalDocs; fixes: string[] } {
+  const next: LegalDocs = JSON.parse(JSON.stringify(docs));
+  const all = () => Object.values(next).flatMap((d) => d.body).join(" ");
+  const fixes: string[] = [];
+  const add = (doc: keyof LegalDocs, text: string, why: string) => {
+    next[doc].body.push(text);
+    fixes.push(why);
+  };
+  if (!/exa|web search/i.test(all())) add("disclaimer", "Some deals are found through Exa web search of resale sites that allow it; we confirm each listing before we post it.", "discovery through Exa web search wasn't disclosed");
+  if (!/facebook marketplace/i.test(all())) add("disclaimer", "We never scrape Facebook Marketplace, Vinted, Mercari, Poshmark, Depop or Grailed.", "the banned-sources commitment wasn't stated");
+  if (!/automated|headless|bot/i.test(all())) add("disclaimer", "We use automated browsers only to render our own images and to read pages that allow it; we never get around a site's bot protection.", "automated browsing wasn't disclosed");
+  return { docs: next, fixes };
+}
+
 export async function run() {
-  if (!process.env.ANTHROPIC_API_KEY || !db()) return { updated: false };
+  if (!db()) return { updated: false };
   const current = await getConfig<LegalDocs>("legal_docs", LEGAL_DEFAULTS);
+  const plan = await claudeReview(current).catch(async (e) => {
+    await logAction("compliance", "claude_unavailable", { error: String(e).slice(0, 200) });
+    const { docs, fixes } = ruleBasedReview(current);
+    return fixes.length
+      ? { changed: true, docs, reasoning: `Rule-based review (Claude unavailable): ${fixes.join("; ")}.` }
+      : { changed: false, docs: current, reasoning: "Rule-based review: pages cover current practices." };
+  });
+  return publish(plan);
+}
+
+async function claudeReview(current: LegalDocs): Promise<{ changed?: boolean; docs?: LegalDocs; reasoning?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("no ANTHROPIC_API_KEY");
   const facts = await productFacts();
   const msg = await new Anthropic().messages.create({
     model: MODEL,
@@ -46,7 +73,10 @@ Return JSON only: {"changed": true|false, "docs": {same shape as current pages},
     }],
   });
   const text = msg.content.find((b) => b.type === "text")?.text ?? "{}";
-  const plan = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as { changed?: boolean; docs?: LegalDocs; reasoning?: string };
+  return JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+}
+
+async function publish(plan: { changed?: boolean; docs?: LegalDocs; reasoning?: string }) {
   if (!plan.changed || !plan.docs) {
     await logAction("compliance", "review_ok", { reasoning: plan.reasoning });
     return { updated: false };
@@ -58,6 +88,6 @@ Return JSON only: {"changed": true|false, "docs": {same shape as current pages},
   }
   await setConfig("legal_docs", plan.docs);
   await setConfig("legal_updated_at", new Date().toISOString());
-  await logDecision("compliance", "Updated legal pages", plan.reasoning ?? "", { facts });
+  await logDecision("compliance", "Updated legal pages", plan.reasoning ?? "", { docs: plan.docs });
   return { updated: true };
 }
