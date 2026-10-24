@@ -22,13 +22,30 @@ export interface Deal {
   final_score: number;
   status: string;
   created_at: string;
+  // Set on public reads: fresh deals keep their math but lose the listing link until the members window passes.
+  locked?: boolean;
+  unlocks_in_h?: number;
+}
+
+// Seat holders get deals first; everyone else sees the link after this window.
+export const MEMBERS_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function forPublic(d: Deal): Deal {
+  const left = new Date(d.created_at).getTime() + MEMBERS_WINDOW_MS - Date.now();
+  if (left <= 0) return d;
+  return { ...d, url: "", locked: true, unlocks_in_h: Math.max(1, Math.ceil(left / 36e5)) };
 }
 
 export async function recentDeals(limit = 20): Promise<Deal[]> {
   "use cache";
   cacheLife("minutes");
-  const { data } = (await db()?.from("deals").select("*").order("created_at", { ascending: false }).limit(limit)) ?? {};
-  return (data as Deal[]) ?? [];
+  const { data } = (await db()
+    ?.from("deals")
+    .select("*")
+    .neq("status", "expired")
+    .order("created_at", { ascending: false })
+    .limit(limit)) ?? {};
+  return ((data as Deal[]) ?? []).map(forPublic);
 }
 
 export async function topDeals(limit = 6): Promise<Deal[]> {
@@ -39,6 +56,17 @@ export async function topDeals(limit = 6): Promise<Deal[]> {
     .select("*")
     .neq("status", "expired")
     .order("final_score", { ascending: false })
+    .limit(limit)) ?? {};
+  return ((data as Deal[]) ?? []).map(forPublic);
+}
+
+// Members feed: everything, links included. Call only after checking membership.
+export async function liveDeals(limit = 150): Promise<Deal[]> {
+  const { data } = (await db()
+    ?.from("deals")
+    .select("*")
+    .neq("status", "expired")
+    .order("created_at", { ascending: false })
     .limit(limit)) ?? {};
   return (data as Deal[]) ?? [];
 }

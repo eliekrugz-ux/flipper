@@ -11,6 +11,7 @@ export function Header() {
         <nav className="flex items-center gap-5 text-sm font-semibold">
           <Link href="/deals" className="hover:text-red">Deals</Link>
           <Link href="/check" className="hover:text-red">Check</Link>
+          <Link href="/members" className="hover:text-red">Members</Link>
         </nav>
       </div>
       <div className="rule" />

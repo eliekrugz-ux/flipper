@@ -43,3 +43,6 @@ next-env.d.ts
 !.env.example
 
 .vercel
+
+# local-only notes
+MARKETING.md

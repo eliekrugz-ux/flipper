@@ -40,7 +40,7 @@ export const DEFAULT_WATCHLIST = [
 const PER_PRODUCT = 3;
 
 // Listings filed under a product page that aren't the working product itself.
-const NOT_THE_ITEM = /\b(case|gig ?bag|bag|cover|manual|box only|empty box|knob|knobs|footswitch|power supply|adapter|cable|parts?|repair|broken|not working|as[- ]is|faulty|for spares|decal|sticker|strap|stand|template|pcb|kit|replica|clone)\b/i;
+const NOT_THE_ITEM = /\b(case|gig ?bag|bag|cover|manual|box only|empty box|knob|knobs|footswitch|power supply|adapter|cable|parts?|repair|broken|not working|as[- ]is|faulty|for spares|decal|sticker|strap|stand|template|pcb|kit|replica|clone|loaded body|body only|neck only|pickguard|faceplate|chassis only|tolex)\b/i;
 // Far below the product's median is almost always a different item, an accessory or a scam — never a real steal.
 const MIN_PRICE_VS_MEDIAN = 0.4;
 
