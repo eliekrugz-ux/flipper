@@ -7,7 +7,7 @@ const SEAT_URL = process.env.NEXT_PUBLIC_WHOP_SEAT_URL || "#";
 const CHECK_URL = process.env.NEXT_PUBLIC_WHOP_CHECK_URL || "#";
 
 const steps = [
-  ["Find", "Thousands of used listings for music gear, vinyl and electronics, watched all day."],
+  ["Find", "Thousands of second-hand listings watched around the clock: furniture, clothing, sneakers, watches, cameras, electronics, cars, music gear."],
   ["Price", "Compared against listings for the exact same item. Outliers out; fees, shipping and a safety buffer subtracted."],
   ["Verify", "Checked live at that price before it reaches you."],
   ["Post", "Only deals clearing $20 net and 30% ROI make the cut, with the full math attached."],
@@ -22,9 +22,9 @@ export default async function Home() {
         <div className="floor" />
         <div className="wrap relative grid12 gap-y-8 pb-16 pt-10 sm:pt-16">
           <div className="col-span-12 md:col-span-8">
-            <div className="label">Resale deals · music gear, vinyl, electronics</div>
+            <div className="label">Resale deals · furniture · clothing · sneakers · watches · cameras · cars · gear</div>
             <h1 className="display mt-4 text-[13vw] sm:text-7xl lg:text-[104px]">
-              Underpriced gear<span className="text-red">.</span>
+              Underpriced finds<span className="text-red">.</span>
               <br />
               <span className="chrome-text">Math done.</span>
             </h1>
@@ -78,7 +78,7 @@ export default async function Home() {
               <div className="label">Flipper Check · per listing</div>
               <div className="display mt-3 text-6xl tnum">$7</div>
               <p className="mt-3 text-ink-2">
-                Paste a Reverb or Discogs link. Get <b className="text-ink">BUY</b>, <b className="text-ink">PASS</b> or{" "}
+                Paste an eBay, Reverb or Discogs link. Get <b className="text-ink">BUY</b>, <b className="text-ink">PASS</b> or{" "}
                 <b className="text-ink">OFFER $X</b> with the math.
               </p>
               <span className="pill-ghost mt-6">Buy a check</span>

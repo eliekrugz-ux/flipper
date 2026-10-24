@@ -128,3 +128,6 @@ alter table agent_logs enable row level security;
 alter table revenue_events enable row level security;
 alter table posts enable row level security;
 alter table config enable row level security;
+
+alter table deals add column if not exists category text;
+create index if not exists deals_category_idx on deals(category);

@@ -2,6 +2,7 @@
 import { DEFAULT_CONFIG, priceDeal, verdict, type CompSource, type PricingConfig } from "./pricing";
 import * as reverb from "./sources/reverb";
 import * as discogs from "./sources/discogs";
+import * as ebay from "./sources/ebay";
 
 export interface CheckResult {
   verdict: "BUY" | "PASS" | "OFFER";
@@ -28,7 +29,30 @@ export async function runCheck(url: string, cfg: PricingConfig = DEFAULT_CONFIG)
   if (reverbId) return checkReverb(reverbId, cfg);
   const discogsId = discogs.listingIdFromUrl(url);
   if (discogsId) return checkDiscogs(discogsId, cfg);
-  throw new UnsupportedListing("Flipper Check currently supports reverb.com/item/… and discogs.com/sell/item/… links.");
+  const ebayId = ebay.itemIdFromUrl(url);
+  if (ebayId && !ebay.ebayEnabled()) throw new UnsupportedListing("eBay checks are coming online shortly. Your credit wasn't used.");
+  if (ebayId) return checkEbay(ebayId, cfg);
+  throw new UnsupportedListing("Flipper Check supports eBay, Reverb and Discogs listing links.");
+}
+
+async function checkEbay(id: string, cfg: PricingConfig): Promise<CheckResult> {
+  const listing = await ebay.getItem(id);
+  if (!listing) throw new UnsupportedListing("That eBay listing has ended or doesn't exist.");
+  const notes: string[] = [];
+  let comps: number[];
+  if (listing.epid) {
+    // Same eBay catalog product = same item.
+    comps = (await ebay.searchUsed("", { epid: listing.epid })).filter((l) => l.id !== listing.id).map((l) => l.price);
+    notes.push(`Compared against ${comps.length} used listings of the same eBay catalog product.`);
+  } else {
+    const query = listing.title.split(/\s+/).slice(0, 6).join(" ");
+    comps = (await ebay.searchUsed(query)).filter((l) => l.id !== listing.id).map((l) => l.price);
+    notes.push(`No catalog match; compared against ${comps.length} used listings matching "${query}". Treat with extra care.`);
+  }
+  if (listing.localPickupOnly) notes.push("Local pickup only: no shipping cost included.");
+  if (listing.offersEnabled) notes.push("Seller accepts Best Offer.");
+  notes.push("eBay's sold data isn't available to us, so market value = median live price × 0.82.");
+  return finish(listing.title, "ebay", listing.url, listing.price, listing.shipping, comps, "active_proxy", notes, cfg);
 }
 
 async function checkReverb(id: string, cfg: PricingConfig): Promise<CheckResult> {

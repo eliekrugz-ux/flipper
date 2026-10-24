@@ -12,7 +12,7 @@ export default function CheckPage() {
           <div className="label"><span className="sec-num">$7</span> · per listing</div>
           <h1 className="display mt-3 text-6xl sm:text-7xl">Flipper<br /><span className="chrome-text">Check.</span></h1>
           <p className="mt-6 text-ink-2">
-            Paste a Reverb or Discogs listing. Flipper pulls comps for the exact item, subtracts fees, shipping
+            Paste an eBay, Reverb or Discogs listing. Flipper pulls comps for the exact item, subtracts fees, shipping
             and a safety buffer, and tells you <b className="text-ink">BUY</b>, <b className="text-ink">PASS</b> or{" "}
             <b className="text-ink">OFFER $X</b>.
           </p>
