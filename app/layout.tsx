@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Flipper — underpriced finds with the profit math done",
   description: "Underpriced second-hand furniture, clothing, sneakers, watches, cameras, electronics, cars and music gear, with comps, fees and net profit worked out.",
+  alternates: { types: { "application/rss+xml": "/feed.xml" } },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

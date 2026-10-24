@@ -3,6 +3,7 @@ import { db, getConfig, logAction, logDecision, setConfig } from "@/lib/db";
 import { DEFAULT_WATCHLIST, run as scout } from "./scout";
 import { run as pricer } from "./pricer";
 import { run as verifier } from "./verifier";
+import { run as marketer } from "./marketer";
 
 const MODEL = "claude-sonnet-5-5";
 
@@ -39,10 +40,10 @@ async function reviewWatchlist(state: State, yieldByProduct: Record<string, numb
     max_tokens: 800,
     messages: [{
       role: "user",
-      content: `You are the CEO agent of Flipper, a company that finds underpriced used music gear on Reverb.
+      content: `You are the CEO agent of Flipper, a company that finds underpriced second-hand items (music gear on Reverb, plus furniture, clothing, sneakers, watches, cameras, electronics and cars on other resale sites).
 State: ${JSON.stringify(state)}
 Qualified deals per product this run: ${JSON.stringify(yieldByProduct)}
-Return JSON only: {"add": [up to 5 specific gear models likely to have mispriced used listings], "remove": [watchlist entries that produced nothing and are unlikely to], "reasoning": "one or two sentences"}`,
+Return JSON only: {"add": [up to 5 specific Reverb music-gear models likely to have mispriced used listings], "remove": [watchlist entries that produced nothing and are unlikely to], "reasoning": "one or two sentences"}`,
     }],
   });
   const text = msg.content.find((b) => b.type === "text")?.text ?? "{}";
@@ -72,7 +73,12 @@ export async function tick() {
     void logAction("verifier", "failed", { error: String(e) });
     return { checked: 0, expired: 0, verified: 0 };
   });
+  const marketing = await marketer().catch((e) => {
+    void logAction("marketer", "failed", { error: String(e) });
+    return { posted: 0, sent: 0 };
+  });
   await reviewWatchlist(state, yieldByProduct).catch((e) => logAction("ceo", "review_failed", { error: String(e) }));
-  await logAction("ceo", "tick_done", { candidates: candidates.length, deals: deals.length, ...verified });
-  return { candidates: candidates.length, deals: deals.length, ...verified };
+  const summary = { candidates: candidates.length, deals: deals.length, ...verified, ...marketing };
+  await logAction("ceo", "tick_done", summary);
+  return summary;
 }

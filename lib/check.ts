@@ -3,6 +3,7 @@ import { DEFAULT_CONFIG, priceDeal, verdict, type CompSource, type PricingConfig
 import * as reverb from "./sources/reverb";
 import * as discogs from "./sources/discogs";
 import * as ebay from "./sources/ebay";
+import { findListings, getWebListing } from "./sources/exa";
 
 export interface CheckResult {
   verdict: "BUY" | "PASS" | "OFFER";
@@ -30,9 +31,9 @@ export async function runCheck(url: string, cfg: PricingConfig = DEFAULT_CONFIG)
   const discogsId = discogs.listingIdFromUrl(url);
   if (discogsId) return checkDiscogs(discogsId, cfg);
   const ebayId = ebay.itemIdFromUrl(url);
-  if (ebayId && !ebay.ebayEnabled()) throw new UnsupportedListing("eBay checks are coming online shortly. Your credit wasn't used.");
-  if (ebayId) return checkEbay(ebayId, cfg);
-  throw new UnsupportedListing("Flipper Check supports eBay, Reverb and Discogs listing links.");
+  if (ebayId && ebay.ebayEnabled()) return checkEbay(ebayId, cfg);
+  if (process.env.EXA_API_KEY && /^https?:\/\//.test(url)) return checkWeb(url, cfg);
+  throw new UnsupportedListing("That kind of link isn't supported yet. Your credit wasn't used.");
 }
 
 async function checkEbay(id: string, cfg: PricingConfig): Promise<CheckResult> {
@@ -53,6 +54,19 @@ async function checkEbay(id: string, cfg: PricingConfig): Promise<CheckResult> {
   if (listing.offersEnabled) notes.push("Seller accepts Best Offer.");
   notes.push("eBay's sold data isn't available to us, so market value = median live price × 0.82.");
   return finish(listing.title, "ebay", listing.url, listing.price, listing.shipping, comps, "active_proxy", notes, cfg);
+}
+
+// Any other listing page: Exa reads the price, then finds the same item for sale elsewhere for comps.
+async function checkWeb(url: string, cfg: PricingConfig): Promise<CheckResult> {
+  const listing = await getWebListing(url);
+  if (!listing) throw new UnsupportedListing("Couldn't read a price on that page, or it isn't for sale any more. Your credit wasn't used.");
+  const query = listing.title.split(/s+/).slice(0, 6).join(" ");
+  const comps = (await findListings(query, [])).filter((l) => l.url !== url).map((l) => l.price);
+  const notes = [
+    `Compared against ${comps.length} listings across the web matching "${query}". Treat with extra care.`,
+    "Market value = median asking price × 0.82, assuming you resell on eBay.",
+  ];
+  return finish(listing.title, new URL(url).hostname.replace(/^www./, ""), url, listing.price, listing.shipping, comps, "active_proxy", notes, cfg);
 }
 
 async function checkReverb(id: string, cfg: PricingConfig): Promise<CheckResult> {

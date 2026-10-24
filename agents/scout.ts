@@ -1,11 +1,11 @@
 import { logAction } from "@/lib/db";
 import { discoverProducts, findProducts, getListing, listingIdFromUrl, productForListing, productListings, type ReverbProduct } from "@/lib/sources/reverb";
-import { search } from "@/lib/sources/exa";
+import { findListings, search } from "@/lib/sources/exa";
 import { pool } from "@/lib/pool";
 import * as ebay from "@/lib/sources/ebay";
 
 export interface Candidate {
-  source: "reverb" | "ebay";
+  source: "reverb" | "ebay" | "web";
   listing: {
     title: string;
     price: number;
@@ -142,6 +142,40 @@ async function exaDiscover(): Promise<ReverbProduct[]> {
   return products;
 }
 
+// Exa covers what no marketplace API does: listings on allowed resale sites, extracted to price + condition.
+// Same specific queries as eBay; each tick scans a rotating slice to keep search spend flat.
+export const WEB_DOMAINS: Record<string, string[]> = {
+  furniture: ["chairish.com", "1stdibs.com", "kaiyo.com", "ebay.com"],
+  clothing: ["ebay.com", "therealreal.com", "thredup.com"],
+  sneakers: ["ebay.com", "goat.com"],
+  watches: ["chrono24.com", "ebay.com"],
+  cameras: ["keh.com", "mpb.com", "ebay.com"],
+  electronics: ["swappa.com", "backmarket.com", "ebay.com"],
+  collectibles: ["ebay.com"],
+  cars: ["bringatrailer.com", "carsandbids.com", "cars.com"],
+  vinyl: ["ebay.com"],
+};
+const WEB_PER_TICK = 12;
+
+async function scanWebQuery(query: string, category: string): Promise<Candidate[]> {
+  const words = query.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/s+/).filter((w) => w.length > 1);
+  const listings = (await findListings(query, WEB_DOMAINS[category] ?? ["ebay.com"])).filter((l) => {
+    const t = l.title.toLowerCase().replace(/[^a-z0-9 ]/g, " ");
+    return words.filter((w) => t.includes(w)).length >= Math.ceil(words.length * 0.75);
+  });
+  return pickCandidates(
+    listings.map((l) => ({ ...l, offersEnabled: false })), "web",
+    { id: `q:${query.toLowerCase()}`, title: query }, category,
+  );
+}
+
+export function webSlice(watchlist: Record<string, string[]>, now = Date.now()) {
+  const all = Object.entries(watchlist).flatMap(([cat, qs]) => qs.map((q) => [q, cat] as const));
+  const slots = Math.max(1, Math.ceil(all.length / WEB_PER_TICK));
+  const slot = Math.floor(now / 18e5) % slots; // advances every 30 min, in step with the tick
+  return all.slice(slot * WEB_PER_TICK, (slot + 1) * WEB_PER_TICK);
+}
+
 // Broad sweeps: each returns every product page in that category with enough used listings for comps.
 export const DEFAULT_CATEGORIES = [
   "overdrive pedal", "distortion pedal", "fuzz pedal", "delay pedal", "reverb pedal", "looper pedal",
@@ -182,7 +216,16 @@ export async function run(
     candidates.push(...ebayScans.flatMap((r) => (r.status === "fulfilled" ? r.value : [])));
     failed += ebayScans.filter((r) => r.status === "rejected").length;
   }
+  let webQueries = 0;
+  if (useExa && !ebay.ebayEnabled()) {
+    const slice = webSlice(ebayWatchlist);
+    webQueries = slice.length;
+    const webScans = await pool(slice, 4, ([q, cat]) => scanWebQuery(q, cat));
+    candidates.push(...webScans.flatMap((r) => (r.status === "fulfilled" ? r.value : [])));
+    failed += webScans.filter((r) => r.status === "rejected").length;
+    await logAction("scout", "web_scan", { queries: slice.map(([q]) => q) });
+  }
   if (failed) await logAction("scout", "scan_failed", { failed });
-  await logAction("scout", "done", { products: products.size, ebayQueries, candidates: candidates.length });
+  await logAction("scout", "done", { products: products.size, ebayQueries, webQueries, candidates: candidates.length });
   return candidates;
 }

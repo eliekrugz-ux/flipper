@@ -30,3 +30,64 @@ export async function search(
     highlights: (r as { highlights?: string[] }).highlights,
   }));
 }
+
+// Exa as a listing source: search allowed marketplaces, then have Exa extract price/condition per page
+// with a JSON-schema summary. Covers categories no marketplace API gives us (furniture, clothing, cars).
+export interface WebListing {
+  id: string;
+  url: string;
+  title: string;
+  price: number;
+  shipping: number;
+  condition: string;
+  forSale: boolean;
+  photo?: string;
+}
+
+const LISTING_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Item name as listed" },
+    price_usd: { type: "number", description: "Current asking price in US dollars; 0 if not shown" },
+    shipping_usd: { type: "number", description: "Shipping cost in US dollars; 0 if free or not shown" },
+    condition: { type: "string", description: "new, used, vintage, refurbished, or unknown" },
+    for_sale: { type: "boolean", description: "True only if this page is a single item currently available to buy (not sold, not a category or article page)" },
+  },
+  required: ["title", "price_usd", "for_sale"],
+} as const;
+
+interface Extracted { title?: string; price_usd?: number; shipping_usd?: number; condition?: string; for_sale?: boolean }
+
+function toListing(r: { url: string; title?: string | null; summary?: string; image?: string }): WebListing | null {
+  let x: Extracted;
+  try { x = JSON.parse(r.summary ?? "{}"); } catch { return null; }
+  if (!x.for_sale || !x.price_usd || x.price_usd <= 0) return null;
+  return {
+    id: r.url, url: r.url, title: x.title || r.title || "", price: x.price_usd,
+    shipping: x.shipping_usd ?? 0, condition: x.condition ?? "unknown", forSale: true, photo: r.image,
+  };
+}
+
+export async function findListings(query: string, includeDomains: string[], numResults = 25): Promise<WebListing[]> {
+  const client = exa();
+  if (!client) return [];
+  const res = await client.search(`${query} for sale`, {
+    type: "auto",
+    numResults,
+    includeDomains: includeDomains.length ? includeDomains : undefined,
+    contents: { summary: { query: "Extract this listing's details", schema: LISTING_SCHEMA }, maxAgeHours: 72 },
+  });
+  return res.results.map((r) => toListing(r as never)).filter((l): l is WebListing => !!l);
+}
+
+// Fresh crawl of one listing, for the Verifier and Flipper Check.
+export async function getWebListing(url: string): Promise<WebListing | null> {
+  const client = exa();
+  if (!client) return null;
+  const res = await client.getContents([url], {
+    summary: { query: "Extract this listing's details", schema: LISTING_SCHEMA },
+    maxAgeHours: 0,
+  });
+  const r = res.results[0];
+  return r ? toListing(r as never) : null;
+}

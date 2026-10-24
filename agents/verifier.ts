@@ -2,6 +2,7 @@ import { db, logAction } from "@/lib/db";
 import { pool } from "@/lib/pool";
 import { getListing, listingIdFromUrl } from "@/lib/sources/reverb";
 import * as ebay from "@/lib/sources/ebay";
+import { getWebListing } from "@/lib/sources/exa";
 
 // Re-checks every live deal on its marketplace: sold, ended or repriced above our buy price → expired.
 // TODO(solari): add a headless-browser screenshot per deal once SOLARI_API_KEY is available.
@@ -12,7 +13,11 @@ export async function run() {
     .from("deals")
     .select("id, url, buy_price, status")
     .neq("status", "expired")
-    .in("source", ebay.ebayEnabled() ? ["reverb", "ebay"] : ["reverb"]);
+    .in("source", [
+      "reverb",
+      ...(ebay.ebayEnabled() ? ["ebay"] : []),
+      ...(process.env.EXA_API_KEY ? ["web"] : []),
+    ]);
 
   let expired = 0;
   let verified = 0;
@@ -20,9 +25,14 @@ export async function run() {
     let reason: string | null = null;
     const reverbId = listingIdFromUrl(deal.url);
     const ebayId = ebay.itemIdFromUrl(deal.url);
-    if (!reverbId && !ebayId) return;
+    const web = !reverbId && !ebayId && !!process.env.EXA_API_KEY;
+    if (!reverbId && !ebayId && !web) return;
     try {
-      if (reverbId) {
+      if (web) {
+        const l = await getWebListing(deal.url);
+        if (!l) reason = "no longer for sale";
+        else if (l.price > Number(deal.buy_price) + 0.5) reason = `price rose to ${l.price}`;
+      } else if (reverbId) {
         const l = await getListing(reverbId);
         if (l.state !== "live") reason = `listing ${l.state}`;
         else if (l.price > Number(deal.buy_price) + 0.5) reason = `price rose to $${l.price}`;
