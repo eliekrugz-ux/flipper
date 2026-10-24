@@ -68,6 +68,12 @@ Exa is how Flipper sees beyond the marketplaces that have APIs:
 
 To control credit use, Scout scans a rotating slice of 6 searches per cycle instead of every category every time.
 
+## Solari
+
+Solari runs the agents' headless browsers ([`lib/sources/solari.ts`](lib/sources/solari.ts)): sessions over Solari's REST API, driven over CDP with `playwright-core`, with no local browser.
+- **Marketing creative:** for each deal it posts, the Marketer has Solari render the deal's share card ([`/card/[id]`](app/card/[id]/page.tsx)) to a 1080×1080 PNG in about 7 seconds. The image is stored in Supabase Storage, saved on the deal (`screenshot_url`), and posted to Bluesky with a clickable link.
+- **Listing checks, done honestly:** Reverb answers automated browsers with an "Are you human?" page. The agent detects these bot walls and never tries to get past them; Reverb's official API stays the source of truth for whether a listing is live.
+
 ## Numbers so far (live, Oct 24 ~2 PM ET)
 
 - **79** live deals, **$13,874** est. net profit found, 2 expired by the Verifier
@@ -104,7 +110,7 @@ flowchart LR
 - **The Check scales with no extra supply:** every pasted link is revenue, and it works on any site Exa can read.
 - **Recurring revenue:** move Seats to $49/mo once the track record shows realized profit per member.
 - **More sources:** the eBay Browse API is already built and waiting on eBay approval, which multiplies non-music supply.
-- **Not done yet:** Solari screenshot verification ([`workers/solari`](workers)) is waiting on a key.
+- **Solari next:** screenshot verification on marketplaces that allow automated browsing.
 
 ## Run it
 
