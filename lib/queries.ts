@@ -120,8 +120,13 @@ export async function dashboardData() {
     s.lastAt ??= l.created_at;
   }
   for (const x of decided.data ?? []) slot(x.agent).decisions++;
+  // Minutes since each agent last acted, for the live status dots on the admin map.
+  const now = Date.now();
+  const ageMin: Record<string, number | null> = {};
+  for (const [a, s] of Object.entries(agents)) ageMin[a] = s.lastAt ? Math.round((now - new Date(s.lastAt).getTime()) / 6e4) : null;
   return {
     agents,
+    ageMin,
     revenue: revenue.data ?? [],
     logs: logs.data ?? [],
     decisions: decisions.data ?? [],
