@@ -9,4 +9,4 @@ create table if not exists study_responses (
   created_at timestamptz not null default now()
 );
 alter table study_responses enable row level security;
-create unique index if not exists study_responses_once on study_responses (study, terac_submission_id) where terac_submission_id is not null;
+alter table study_responses add constraint study_responses_once unique (study, terac_submission_id);
